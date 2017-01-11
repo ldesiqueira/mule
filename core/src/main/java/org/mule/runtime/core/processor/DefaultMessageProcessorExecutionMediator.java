@@ -7,14 +7,10 @@
 
 package org.mule.runtime.core.processor;
 
-import static reactor.core.publisher.Flux.from;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.processor.Processor;
 
-import java.util.function.Function;
-
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 /**
  * Default execution mediator for {@link Processor} that delegates the transformation to the {@link Processor}.
@@ -27,7 +23,8 @@ public class DefaultMessageProcessorExecutionMediator implements MessageProcesso
    * {@inheritDoc}
    */
   @Override
-  public Function<Flux<Event>, Publisher<Event>> apply(Processor processor) {
-    return stream -> from(stream.transform(processor));
+  public Publisher<Event> apply(Publisher<Event> publisher, Processor processor) {
+    return processor.apply(publisher);
   }
+
 }

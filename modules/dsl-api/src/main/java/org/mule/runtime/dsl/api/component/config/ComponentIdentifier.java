@@ -24,6 +24,7 @@ import javax.xml.namespace.QName;
 public class ComponentIdentifier {
 
   public static QName ANNOTATION_NAME = new QName("config", "componentIdentifier");
+  public static QName ANNOTATION_PARAMETERS = new QName("config", "componentParameters");
 
   private String namespace;
   private String name;

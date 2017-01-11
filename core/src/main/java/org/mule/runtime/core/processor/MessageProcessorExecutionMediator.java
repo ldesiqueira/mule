@@ -10,26 +10,24 @@ package org.mule.runtime.core.processor;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.processor.Processor;
 
-import java.util.function.Function;
-
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
 
 /**
  * Executes {@link Processor Processors} while coordinating the several moving parts that are affected by the execution process, so that such pieces
  * can remain decoupled.
  * <p/>
- * This mediator will coordinate {@link Processor processors}, {@link org.mule.runtime.core.processor.interceptor.MessageProcessorInterceptorCallback interceptor callbacks}.
+ * This mediator will coordinate {@link Processor processors}, {@link org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback interceptor callbacks}.
  *
  * @since 4.0
  */
 public interface MessageProcessorExecutionMediator {
 
   /**
-   * Given the {@link }
+   * TODO
+   * @param publisher
    * @param processor
    * @return
    */
-  Function<Flux<Event>, Publisher<Event>> apply(Processor processor);
+  Publisher<Event> apply(Publisher<Event> publisher, Processor processor);
 
 }
