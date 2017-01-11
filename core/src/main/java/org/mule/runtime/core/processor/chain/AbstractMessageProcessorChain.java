@@ -28,6 +28,7 @@ import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.construct.MessageProcessorPathResolver;
 import org.mule.runtime.core.api.construct.Pipeline;
+import org.mule.runtime.core.api.context.MuleContextAware;
 import org.mule.runtime.core.api.exception.MessagingExceptionHandler;
 import org.mule.runtime.core.api.exception.MessagingExceptionHandlerAware;
 import org.mule.runtime.core.api.processor.MessageProcessorChain;
@@ -122,9 +123,13 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
   }
 
   private void createMessageProcessorExecutionMediator() {
-    this.messageProcessorExecutionMediator =
-        this.muleContext.getMessageProcessorInterceptorManager().hasInterceptionCallbacksRegistered()
+    messageProcessorExecutionMediator =
+        muleContext.getMessageProcessorInterceptorManager().hasInterceptionCallbacksRegistered()
             ? new InterceptorMessageProcessorExecutionMediator() : new DefaultMessageProcessorExecutionMediator();
+
+    if (messageProcessorExecutionMediator instanceof MuleContextAware) {
+      ((MuleContextAware) messageProcessorExecutionMediator).setMuleContext(muleContext);
+    }
   }
 
   private Function<Publisher<Event>, Publisher<Event>> processorFunction(Processor processor) {

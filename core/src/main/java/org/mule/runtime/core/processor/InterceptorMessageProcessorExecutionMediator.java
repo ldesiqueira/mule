@@ -15,6 +15,7 @@ import static reactor.core.publisher.Flux.from;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
+import org.mule.runtime.core.api.context.MuleContextAware;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.message.InternalMessage;
@@ -24,8 +25,6 @@ import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 
 import java.util.Map;
 import java.util.Optional;
-
-import javax.inject.Inject;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -37,12 +36,16 @@ import reactor.core.publisher.Mono;
  *
  * @since 4.0
  */
-public class InterceptorMessageProcessorExecutionMediator implements MessageProcessorExecutionMediator {
+public class InterceptorMessageProcessorExecutionMediator implements MessageProcessorExecutionMediator, MuleContextAware {
 
   private transient Logger logger = LoggerFactory.getLogger(InterceptorMessageProcessorExecutionMediator.class);
 
-  @Inject
   private MuleContext muleContext;
+
+  @Override
+  public void setMuleContext(MuleContext muleContext) {
+    this.muleContext = muleContext;
+  }
 
   /**
    * {@inheritDoc}

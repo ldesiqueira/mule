@@ -27,6 +27,6 @@ public interface MessageProcessorInterceptorCallback {
 
   Message getResult(Message message, Map<String, String> parameters) throws MuleException;
 
-  void after(Message resultMessage, Map<String, String> parameters);
+  default void after(Message resultMessage, Map<String, String> parameters) {}
 
 }
