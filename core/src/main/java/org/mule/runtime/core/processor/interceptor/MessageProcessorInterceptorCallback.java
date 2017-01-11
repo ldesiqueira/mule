@@ -7,6 +7,7 @@
 
 package org.mule.runtime.core.processor.interceptor;
 
+import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.core.api.Event;
 
 import java.util.Map;
@@ -16,12 +17,12 @@ import java.util.Map;
  */
 public interface MessageProcessorInterceptorCallback {
 
-  default Event before(Event event, Map<String, Object> parameters) { return event; }
+  default Event before(Event event, Map<String, String> parameters) throws MuleException { return event; }
 
-  default boolean executeProcessor(Event event, Map<String, Object> parameters) { return true; }
+  default boolean executeProcessor(Event event, Map<String, String> parameters) { return true; }
 
-  Event getResult(Event event, Map<String, Object> parameters);
+  Event getResult(Event event, Map<String, String> parameters) throws MuleException;
 
-  default Event after(Event resultEvent, Map<String, Object> parameters) { return resultEvent; }
+  default Event after(Event resultEvent, Map<String, String> parameters) throws MuleException { return resultEvent; }
 
 }

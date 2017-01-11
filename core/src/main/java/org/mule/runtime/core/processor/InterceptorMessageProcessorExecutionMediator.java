@@ -11,11 +11,14 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.mule.runtime.api.dsl.config.ComponentConfiguration.ANNOTATION_PARAMETERS;
 import static org.mule.runtime.api.dsl.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.api.util.Preconditions.checkState;
+import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
+import static org.mule.runtime.core.internal.util.rx.Operators.nullSafeMap;
 import static reactor.core.publisher.Flux.from;
 import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.rx.Exceptions;
 import org.mule.runtime.core.processor.interceptor.MessageProcessorInterceptorCallback;
 
 import java.util.HashMap;
@@ -26,6 +29,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link org.mule.runtime.core.processor.interceptor.MessageProcessorInterceptorCallback interceptor callback}.
@@ -85,12 +89,25 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       if (logger.isDebugEnabled()) {
         logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
       }
-      return applyInterceptor(interceptorCallback, processor);
+      //TODO resolve parameters!
+      return applyInterceptor(interceptorCallback, componentParameters, processor);
     }
     return applyNext(processor);
   }
 
-  private Function<Flux<Event>,Publisher<Event>> applyInterceptor(MessageProcessorInterceptorCallback interceptorCallback, Processor processor) {
+  private Function<Flux<Event>,Publisher<Event>> applyInterceptor(MessageProcessorInterceptorCallback interceptorCallback, Map<String, String> parameters, Processor processor) {
+    return stream -> from(stream).flatMap(event -> {
+      Mono<Event> mono = Mono.just(event)
+          .map(checkedFunction(eventToProcess -> interceptorCallback.before(eventToProcess, parameters)));
+      if (interceptorCallback.executeProcessor(event, parameters)) {
+            mono = mono.transform(processor);
+      } else {
+            mono = mono.handle(nullSafeMap(checkedFunction(response -> interceptorCallback.getResult(event, parameters))));
+      }
+      mono.map(checkedFunction(response -> interceptorCallback.after(response, parameters)))
+          .otherwise(Exceptions.EventDroppedException.class, mde -> Mono.just(event));
+      return mono;
+    });
   }
 
   private Function<Flux<Event>, Publisher<Event>> applyNext(Processor processor) {
