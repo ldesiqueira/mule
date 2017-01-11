@@ -122,8 +122,9 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
   }
 
   private void createMessageProcessorExecutionMediator() {
-    this.messageProcessorExecutionMediator = this.muleContext.getMessageProcessorInterceptorManager().hasInterceptionCallbacksRegistered() ?
-        new InterceptorMessageProcessorExecutionMediator() : new DefaultMessageProcessorExecutionMediator();
+    this.messageProcessorExecutionMediator =
+        this.muleContext.getMessageProcessorInterceptorManager().hasInterceptionCallbacksRegistered()
+            ? new InterceptorMessageProcessorExecutionMediator() : new DefaultMessageProcessorExecutionMediator();
   }
 
   private Function<Publisher<Event>, Publisher<Event>> processorFunction(Processor processor) {

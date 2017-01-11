@@ -18,7 +18,8 @@ public interface MessageProcessorInterceptorManager {
 
   boolean hasInterceptionCallbacksRegistered();
 
-  void registerInterceptionCallback(ComponentIdentifier componentIdentifier, MessageProcessorInterceptorCallback processorInterceptorCallback);
+  void registerInterceptionCallback(ComponentIdentifier componentIdentifier,
+                                    MessageProcessorInterceptorCallback processorInterceptorCallback);
 
   Optional<MessageProcessorInterceptorCallback> retrieveInterceptorCallback(ComponentIdentifier componentIdentifier);
 }

@@ -60,7 +60,8 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
         }
       }
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
-      Optional<MessageProcessorInterceptorCallback> callbackOptional = interceptorManager.retrieveInterceptorCallback(componentIdentifier);
+      Optional<MessageProcessorInterceptorCallback> callbackOptional =
+          interceptorManager.retrieveInterceptorCallback(componentIdentifier);
       if (!callbackOptional.isPresent()) {
         return processor.apply(publisher);
       }
@@ -81,20 +82,20 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
   /**
    * {@inheritDoc}
    */
-  private Publisher<Event> applyInterceptor(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback, Map<String, String> parameters, Processor processor) {
+  private Publisher<Event> applyInterceptor(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
+                                            Map<String, String> parameters, Processor processor) {
     return stream -> from(publisher).flatMap(event -> {
-      Mono<Event> mono = Mono.just(event).map(checkedFunction(eventToProcess ->
-                                                                  Event.builder(event)
-                                                                      .message(InternalMessage.builder(interceptorCallback.before(eventToProcess.getMessage(), parameters))
-                                                                                   .build())
-                                                                      .build()));
+      Mono<Event> mono = Mono.just(event).map(checkedFunction(eventToProcess -> Event.builder(event)
+          .message(InternalMessage.builder(interceptorCallback.before(eventToProcess.getMessage(), parameters))
+              .build())
+          .build()));
       //TODO: how to get event obtained from before operation!
       if (interceptorCallback.executeProcessor(event.getMessage(), parameters)) {
         mono = mono.transform(processor);
       } else {
         mono = mono.handle(nullSafeMap(checkedFunction(response -> Event.builder(event)
             .message(InternalMessage.builder(interceptorCallback.getResult(event.getMessage(), parameters))
-                         .build())
+                .build())
             .build())));
       }
       mono.doOnNext(response -> interceptorCallback.after(response.getMessage(), parameters))
