@@ -38,6 +38,7 @@ import org.mule.runtime.core.context.notification.MessageProcessorNotification;
 import org.mule.runtime.core.context.notification.ServerNotificationManager;
 import org.mule.runtime.core.exception.MessagingException;
 import org.mule.runtime.core.execution.MessageProcessorExecutionTemplate;
+import org.mule.runtime.core.processor.MessageProcessorExecutionMediator;
 import org.mule.runtime.core.util.NotificationUtils;
 import org.mule.runtime.core.util.StringUtils;
 
@@ -64,6 +65,7 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
   protected MuleContext muleContext;
   protected FlowConstruct flowConstruct;
   protected MessageProcessorExecutionTemplate messageProcessorExecutionTemplate = createExecutionTemplate();
+  private MessageProcessorExecutionMediator messageProcessorExecutionMediator;
 
   public AbstractMessageProcessorChain(List<Processor> processors) {
     this(null, processors);
@@ -115,7 +117,7 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
     return publisher -> from(publisher)
         .doOnNext(preNotification(processor))
         .doOnNext(event -> setCurrentEvent(event))
-        .transform(stream -> from(stream.transform(processor)))
+        .transform(messageProcessorExecutionMediator.apply(processor))
         .mapError(MessagingException.class, handleMessagingException(processor))
         .doOnNext(result -> setCurrentEvent(result))
         .doOnNext(postNotification(processor))
