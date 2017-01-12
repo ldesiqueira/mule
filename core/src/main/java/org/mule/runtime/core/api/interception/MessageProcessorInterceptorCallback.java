@@ -21,7 +21,7 @@ public interface MessageProcessorInterceptorCallback {
     return message;
   }
 
-  default boolean executeProcessor(Message message, Map<String, String> parameters) {
+  default boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
     return true;
   }
 

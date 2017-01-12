@@ -122,8 +122,8 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     }
 
     @Override
-    public boolean executeProcessor(Message message, Map<String, String> parameters) {
-      return delegate.executeProcessor(message, parameters);
+    public boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
+      return delegate.shouldExecuteProcessor(message, parameters);
     }
 
     @Override
@@ -140,7 +140,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   class DoProcessorInterceptorCallback implements MessageProcessorInterceptorCallback {
 
     @Override
-    public boolean executeProcessor(Message message, Map<String, String> parameters) {
+    public boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
       return true;
     }
 

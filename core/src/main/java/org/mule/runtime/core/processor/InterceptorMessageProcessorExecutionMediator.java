@@ -93,7 +93,7 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
               .build())
           .build()));
       //TODO: how to get event obtained from before operation!
-      if (interceptorCallback.executeProcessor(event.getMessage(), parameters)) {
+      if (interceptorCallback.shouldExecuteProcessor(event.getMessage(), parameters)) {
         mono = mono.transform(processor);
       } else {
         mono = mono.handle(nullSafeMap(checkedFunction(response -> Event.builder(event)
