@@ -12,6 +12,7 @@ import static org.mule.runtime.core.internal.util.rx.Operators.nullSafeMap;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Flux.from;
+import static reactor.core.publisher.Mono.just;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
@@ -20,7 +21,6 @@ import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallbac
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.core.api.rx.Exceptions;
 import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 
 import java.util.Map;
@@ -29,7 +29,6 @@ import java.util.Optional;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Mono;
 
 /**
  * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback interceptor callback}.
@@ -87,24 +86,19 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    */
   private Publisher<Event> applyInterceptor(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
                                             Map<String, String> parameters, Processor processor) {
-    return stream -> from(publisher).flatMap(event -> {
-      Mono<Event> mono = Mono.just(event).map(checkedFunction(eventToProcess -> Event.builder(event)
-          .message(InternalMessage.builder(interceptorCallback.before(eventToProcess.getMessage(), parameters))
-              .build())
-          .build()));
-      //TODO: how to get event obtained from before operation!
-      if (interceptorCallback.shouldExecuteProcessor(event.getMessage(), parameters)) {
-        mono = mono.transform(processor);
-      } else {
-        mono = mono.handle(nullSafeMap(checkedFunction(response -> Event.builder(event)
-            .message(InternalMessage.builder(interceptorCallback.getResult(event.getMessage(), parameters))
-                .build())
-            .build())));
-      }
-      mono.doOnNext(response -> interceptorCallback.after(response.getMessage(), parameters))
-          .otherwise(Exceptions.EventDroppedException.class, mde -> Mono.just(event));
-      return mono;
-    });
+    return stream -> from(publisher)
+        .concatMap(request -> just(request))
+        .flatMap(request -> {
+          if (interceptorCallback.shouldExecuteProcessor(request.getMessage(), parameters)) {
+            return just(request).transform(processor);
+          } else {
+            return just(request).handle(nullSafeMap(checkedFunction(response -> Event.builder(response)
+                .message(InternalMessage.builder(interceptorCallback.getResult(response.getMessage(), parameters))
+                    .build())
+                .build())));
+          }
+        })
+        .doOnNext(response -> interceptorCallback.after(response.getMessage(), parameters));
   }
 }
 
