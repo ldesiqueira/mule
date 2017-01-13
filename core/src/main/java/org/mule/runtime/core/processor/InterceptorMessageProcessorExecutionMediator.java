@@ -12,7 +12,7 @@ import static org.mule.runtime.core.internal.util.rx.Operators.nullSafeMap;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Flux.from;
-import static reactor.core.publisher.Mono.just;
+import static reactor.core.publisher.Flux.just;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
@@ -20,8 +20,11 @@ import org.mule.runtime.core.api.context.MuleContextAware;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.message.InternalMessage;
+import org.mule.runtime.core.api.processor.MessageProcessorChain;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
+import org.mule.runtime.core.construct.DynamicPipelineMessageProcessor;
+import org.mule.runtime.core.exception.MessagingException;
 
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +54,13 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    */
   @Override
   public Publisher<Event> apply(Publisher<Event> publisher, Processor processor) {
+    if (processor instanceof DynamicPipeline) {
+      ((MessageProcessorChain) ((DynamicPipelineMessageProcessor) processor).getListener()).getMessageProcessors()
+          .stream().map(innerProcessor ->
+                            apply(publisher, innerProcessor)
+      ).reduce((first, second) -> second).get();
+    }
+
     if (processor instanceof AnnotatedObject) {
       final AnnotatedObject annotatedObject = (AnnotatedObject) processor;
       ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
@@ -86,19 +96,28 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    */
   private Publisher<Event> applyInterceptor(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
                                             Map<String, String> parameters, Processor processor) {
-    return stream -> from(publisher)
-        .concatMap(request -> just(request))
-        .flatMap(request -> {
-          if (interceptorCallback.shouldExecuteProcessor(request.getMessage(), parameters)) {
-            return just(request).transform(processor);
-          } else {
-            return just(request).handle(nullSafeMap(checkedFunction(response -> Event.builder(response)
-                .message(InternalMessage.builder(interceptorCallback.getResult(response.getMessage(), parameters))
-                    .build())
-                .build())));
-          }
-        })
-        .doOnNext(response -> interceptorCallback.after(response.getMessage(), parameters));
+    return from(publisher)
+        .concatMap(request -> just(request)
+            .map(checkedFunction(event -> Event.builder(event)
+                .message(InternalMessage.builder(interceptorCallback.before(event.getMessage(), parameters))
+                             .build()).build())))
+        .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
+        .doOnNext(result -> interceptorCallback.after(result.getMessage(), parameters, null))
+        .doOnError(MessagingException.class,
+                           exception -> interceptorCallback.after(exception.getEvent().getMessage(), parameters, exception));
   }
+
+  protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
+                                         Map<String, String> parameters, Processor processor) {
+    return from(publisher).concatMap(event -> {
+        if (interceptorCallback.shouldExecuteProcessor(event.getMessage(), parameters)) {
+          return processor.apply(publisher);
+        } else {
+          return from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
+                .message(InternalMessage.builder(interceptorCallback.getResult(request .getMessage(), parameters)).build()).build())));
+        }
+    });
+  }
+
 }
 

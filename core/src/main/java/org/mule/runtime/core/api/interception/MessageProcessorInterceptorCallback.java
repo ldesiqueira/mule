@@ -9,6 +9,7 @@ package org.mule.runtime.core.api.interception;
 
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.message.Message;
+import org.mule.runtime.core.exception.MessagingException;
 
 import java.util.Map;
 
@@ -27,6 +28,6 @@ public interface MessageProcessorInterceptorCallback {
 
   Message getResult(Message message, Map<String, String> parameters) throws MuleException;
 
-  default void after(Message resultMessage, Map<String, String> parameters) {}
+  default void after(Message resultMessage, Map<String, String> parameters, MessagingException e) {}
 
 }

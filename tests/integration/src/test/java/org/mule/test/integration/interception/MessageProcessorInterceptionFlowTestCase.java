@@ -16,6 +16,7 @@ import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.ConfigurationBuilder;
 import org.mule.runtime.core.api.config.ConfigurationException;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
+import org.mule.runtime.core.exception.MessagingException;
 import org.mule.test.AbstractIntegrationTestCase;
 
 import java.util.List;
@@ -132,8 +133,8 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     }
 
     @Override
-    public void after(Message resultMessage, Map<String, String> parameters) {
-      delegate.after(resultMessage, parameters);
+    public void after(Message resultMessage, Map<String, String> parameters, MessagingException e) {
+      delegate.after(resultMessage, parameters, e);
     }
   }
 
@@ -141,14 +142,16 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
     @Override
     public boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
-      return true;
+      return false;
     }
 
     @Override
     public Message getResult(Message message, Map<String, String> parameters) throws MuleException {
-      return Message.builder()
+      final Message response = Message.builder()
           .payload(message.getPayload().getValue() + " " + INTERCEPTED)
           .build();
+      System.out.println("INTERCEPTING --- request: '" + message.getPayload().getValue() + "' response: '" + response.getPayload().getValue() + "'");
+      return response;
     }
 
   }
