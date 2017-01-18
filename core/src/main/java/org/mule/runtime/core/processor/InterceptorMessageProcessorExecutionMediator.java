@@ -32,13 +32,12 @@ import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 import org.mule.runtime.core.exception.MessagingException;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback interceptor callback}.
@@ -68,53 +67,72 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    */
   @Override
   public Publisher<Event> apply(Publisher<Event> publisher, Processor processor) {
-    if (processor instanceof AnnotatedObject) {
-      final AnnotatedObject annotatedObject = (AnnotatedObject) processor;
-      ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Intercepting execution of Processor: '{}' for componentIdentifier: '{}'", processor.getClass(),
-                     componentIdentifier);
-      }
+    if (shouldIntercept(processor)) {
+      logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
 
-      if (componentIdentifier == null) {
-        return processor.apply(publisher);
-      }
+      AnnotatedObject annotatedObject = (AnnotatedObject) processor;
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
       MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
-      if (interceptorCallback == null) {
-        return processor.apply(publisher);
-      }
 
       Map<String, String> componentParameters = (Map<String, String>) annotatedObject.getAnnotation(ANNOTATION_PARAMETERS);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
-      }
 
       //TODO resolve parameters! (delegate to each processor)
-      return applyInterceptor(publisher, interceptorCallback, componentParameters, processor);
+      return intercept(publisher, interceptorCallback, componentParameters, processor);
     }
+
     return processor.apply(publisher);
   }
+
+  private Boolean shouldIntercept(Processor processor) {
+    if (processor instanceof AnnotatedObject) {
+      AnnotatedObject annotatedObject = (AnnotatedObject) processor;
+      ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
+      if (componentIdentifier != null) {
+        MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
+        MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
+        if (null != interceptorCallback) {
+          return true;
+        } else {
+          logger.debug("Processor '{}' does not have a Interceptor Callback", processor.getClass());
+        }
+      } else {
+        logger.warn("Processor '{}' is an '{}' but doesn't have a componentIdentifier", processor.getClass(),
+                    AnnotatedObject.class);
+
+      }
+    } else {
+      logger.debug("Processor '{}' is not an '{}'", processor.getClass(), AnnotatedObject.class);
+    }
+    return false;
+  }
+
 
   /**
    * {@inheritDoc}
    */
-  private Publisher<Event> applyInterceptor(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                            Map<String, String> parameters, Processor processor) {
+  private Publisher<Event> intercept(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
+                                     Map<String, String> parameters, Processor processor) {
     return from(publisher)
         .concatMap(request -> just(request)
             .map(checkedFunction(event -> Event.builder(event)
                 .message(InternalMessage
-                    .builder(interceptorCallback.before(event.getMessage(), resolveParameters(event, processor, parameters)))
+                    .builder(interceptorCallback
+                        .before(event.getMessage(), resolveParameters(event, processor, parameters)))
                     .build())
                 .build()))
             .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
             .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
-                .builder(interceptorCallback.after(result.getMessage(), resolveParameters(request, processor, parameters), null))
+                .builder(interceptorCallback
+                    .after(result.getMessage(),
+                           resolveParameters(request,
+                                             processor,
+                                             parameters),
+                           null))
                 .build()).build()))
             .doOnError(MessagingException.class,
                        checkedConsumer(exception -> interceptorCallback.after(exception.getEvent().getMessage(),
-                                                                              resolveParameters(request, processor, parameters),
+                                                                              resolveParameters(request, processor,
+                                                                                                parameters),
                                                                               exception))));
   }
 
@@ -126,7 +144,8 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       } else {
         Publisher<Event> next = from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
             .message(InternalMessage
-                .builder(interceptorCallback.getResult(request.getMessage(), resolveParameters(event, processor, parameters)))
+                .builder(interceptorCallback
+                    .getResult(request.getMessage(), resolveParameters(event, processor, parameters)))
                 .build())
             .build())));
         if (processor instanceof InterceptableMessageProcessor) {
@@ -137,7 +156,8 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
               next = nextProcessor.apply(next);
             }
           } catch (Exception e) {
-            throw new MuleRuntimeException(createStaticMessage("Error while getting next processor from interceptor"), e);
+            throw new MuleRuntimeException(createStaticMessage("Error while getting next processor from interceptor"),
+                                           e);
           }
         }
         return next;
@@ -167,4 +187,3 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
   }
 
 }
-
