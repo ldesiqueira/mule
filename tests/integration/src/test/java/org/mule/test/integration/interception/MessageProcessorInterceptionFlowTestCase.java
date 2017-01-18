@@ -119,40 +119,39 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     }
 
     @Override
-    public Message before(Message message, Map<String, String> parameters) throws MuleException {
+    public Message before(Message message, Map<String, Object> parameters) throws MuleException {
+      System.out.println("BEFORE: " + parameters);
       return delegate.before(message, parameters);
     }
 
     @Override
-    public boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
+    public boolean shouldExecuteProcessor(Message message, Map<String, Object> parameters) {
       return delegate.shouldExecuteProcessor(message, parameters);
     }
 
     @Override
-    public Message getResult(Message message, Map<String, String> parameters) throws MuleException {
+    public Message getResult(Message message, Map<String, Object> parameters) throws MuleException {
       return delegate.getResult(message, parameters);
     }
 
     @Override
-    public void after(Message resultMessage, Map<String, String> parameters, MessagingException e) {
-      delegate.after(resultMessage, parameters, e);
+    public void after(Message resultMessage, MessagingException e) {
+      delegate.after(resultMessage, e);
     }
   }
 
   class DoProcessorInterceptorCallback implements MessageProcessorInterceptorCallback {
 
     @Override
-    public boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
+    public boolean shouldExecuteProcessor(Message message, Map<String, Object> parameters) {
       return false;
     }
 
     @Override
-    public Message getResult(Message message, Map<String, String> parameters) throws MuleException {
+    public Message getResult(Message message, Map<String, Object> parameters) throws MuleException {
       final Message response = Message.builder()
           .payload(message.getPayload().getValue() + " " + INTERCEPTED)
           .build();
-      //System.out.println("INTERCEPTING --- request: '" + message.getPayload().getValue() + "' response: '"
-      //    + response.getPayload().getValue() + "'");
       return response;
     }
 
@@ -161,7 +160,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   class DoNotProcessorInterceptorCallback implements MessageProcessorInterceptorCallback {
 
     @Override
-    public Message getResult(Message message, Map<String, String> parameters) throws MuleException {
+    public Message getResult(Message message, Map<String, Object> parameters) throws MuleException {
       throw new IllegalStateException("Should not be invoked as the intercepted processor should be called");
     }
   }

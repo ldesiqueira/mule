@@ -18,18 +18,18 @@ import java.util.Map;
  */
 public interface MessageProcessorInterceptorCallback {
 
-  default Message before(Message message, Map<String, String> parameters) throws MuleException {
+  default Message before(Message message, Map<String, Object> parameters) throws MuleException {
     return message;
   }
 
-  default boolean shouldExecuteProcessor(Message message, Map<String, String> parameters) {
+  default boolean shouldExecuteProcessor(Message message, Map<String, Object> parameters) {
     return true;
   }
 
-  Message getResult(Message message, Map<String, String> parameters) throws MuleException;
+  Message getResult(Message message, Map<String, Object> parameters) throws MuleException;
 
   //TODO should support throwing an exception
   //TODO should all also support changing the Message (debugger use case)
-  default void after(Message resultMessage, Map<String, String> parameters, MessagingException e) {}
+  default void after(Message resultMessage, MessagingException e) {}
 
 }

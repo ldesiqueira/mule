@@ -26,6 +26,7 @@ import org.mule.runtime.core.AbstractAnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.FlowConstruct;
+import org.mule.runtime.core.api.construct.FlowConstructAware;
 import org.mule.runtime.core.api.construct.MessageProcessorPathResolver;
 import org.mule.runtime.core.api.construct.Pipeline;
 import org.mule.runtime.core.api.context.MuleContextAware;
@@ -129,6 +130,9 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
 
     if (messageProcessorExecutionMediator instanceof MuleContextAware) {
       ((MuleContextAware) messageProcessorExecutionMediator).setMuleContext(muleContext);
+    }
+    if (messageProcessorExecutionMediator instanceof FlowConstructAware) {
+      ((FlowConstructAware) messageProcessorExecutionMediator).setFlowConstruct(flowConstruct);
     }
   }
 
