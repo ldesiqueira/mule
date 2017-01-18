@@ -135,8 +135,8 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     }
 
     @Override
-    public void after(Message resultMessage, MessagingException e) {
-      delegate.after(resultMessage, e);
+    public Message after(Message resultMessage, Map<String, Object> parameters, MessagingException e) {
+      return delegate.after(resultMessage, parameters, e);
     }
   }
 

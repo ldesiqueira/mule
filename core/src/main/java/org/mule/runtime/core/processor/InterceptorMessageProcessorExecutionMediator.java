@@ -9,6 +9,7 @@ package org.mule.runtime.core.processor;
 
 import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import static org.mule.runtime.core.api.rx.Exceptions.checkedConsumer;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
 import static org.mule.runtime.core.internal.util.rx.Operators.nullSafeMap;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
@@ -108,11 +109,12 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
             .map(checkedFunction(event -> Event.builder(event)
                 .message(InternalMessage.builder(interceptorCallback.before(event.getMessage(), resolveParameters(event, processor, parameters)))
                     .build())
-                .build())))
-        .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
-        .doOnNext(result -> interceptorCallback.after(result.getMessage(), null))
-        .doOnError(MessagingException.class,
-                   exception -> interceptorCallback.after(exception.getEvent().getMessage(), exception));
+                .build()))
+            .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
+            .map(checkedFunction(result -> Event.builder(result).message(InternalMessage.builder(interceptorCallback.after(result.getMessage(), resolveParameters(request, processor, parameters), null)).build()).build()))
+            .doOnError(MessagingException.class,
+                       checkedConsumer(exception -> interceptorCallback.after(exception.getEvent().getMessage(),
+                                                          resolveParameters(request, processor, parameters), exception))));
   }
 
   protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,

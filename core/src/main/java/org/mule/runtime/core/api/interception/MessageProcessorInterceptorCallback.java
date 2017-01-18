@@ -30,6 +30,6 @@ public interface MessageProcessorInterceptorCallback {
 
   //TODO should support throwing an exception
   //TODO should all also support changing the Message (debugger use case)
-  default void after(Message resultMessage, MessagingException e) {}
+  default Message after(Message resultMessage, Map<String, Object> parameters, MessagingException e) { return resultMessage; }
 
 }
