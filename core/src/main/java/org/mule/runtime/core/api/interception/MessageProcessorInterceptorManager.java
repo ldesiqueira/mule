@@ -7,19 +7,14 @@
 
 package org.mule.runtime.core.api.interception;
 
-import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
-
-import java.util.Optional;
-
 /**
  * TODO
  */
 public interface MessageProcessorInterceptorManager {
 
-  boolean hasInterceptionCallbacksRegistered();
+  boolean isInterceptionEnabled();
 
-  void registerInterceptionCallback(ComponentIdentifier componentIdentifier,
-                                    MessageProcessorInterceptorCallback processorInterceptorCallback);
+  void setInterceptionCallback(MessageProcessorInterceptorCallback processorInterceptorCallback);
 
-  Optional<MessageProcessorInterceptorCallback> retrieveInterceptorCallback(ComponentIdentifier componentIdentifier);
+  MessageProcessorInterceptorCallback retrieveInterceptorCallback();
 }

@@ -7,59 +7,40 @@
 
 package org.mule.runtime.core.processor.interceptor;
 
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
 import static org.mule.runtime.api.util.Preconditions.checkNotNull;
-import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * TODO
  */
 public class DefaultMessageProcessorInterceptorManager implements MessageProcessorInterceptorManager {
 
-  private Map<ComponentIdentifier, MessageProcessorInterceptorCallback> processorInterceptorCallbacks = new HashMap<>();
+  private MessageProcessorInterceptorCallback processorInterceptorCallback;
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public boolean hasInterceptionCallbacksRegistered() {
-    return processorInterceptorCallbacks.size() > 0;
+  public boolean isInterceptionEnabled() {
+    return processorInterceptorCallback != null;
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void registerInterceptionCallback(ComponentIdentifier componentIdentifier,
-                                           MessageProcessorInterceptorCallback processorInterceptorCallback) {
-    checkNotNull(componentIdentifier, "componentIdentifier not null");
-    checkNotNull(processorInterceptorCallback, "processorInterceptorCallback not null");
+  public void setInterceptionCallback(MessageProcessorInterceptorCallback processorInterceptorCallback) {
+    checkNotNull(processorInterceptorCallback, "processorInterceptorCallback cannot be null");
 
-    if (this.processorInterceptorCallbacks.containsKey(componentIdentifier)) {
-      throw new IllegalStateException("There is already registered an " + MessageProcessorInterceptorCallback.class.getName()
-          + " for componentIdentifier: " + componentIdentifier);
-    }
-    this.processorInterceptorCallbacks.put(componentIdentifier, processorInterceptorCallback);
+    this.processorInterceptorCallback = processorInterceptorCallback;
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public Optional<MessageProcessorInterceptorCallback> retrieveInterceptorCallback(ComponentIdentifier componentIdentifier) {
-    checkNotNull(componentIdentifier, "componentIdentifier not null");
-
-    if (!this.processorInterceptorCallbacks.containsKey(componentIdentifier)) {
-      return empty();
-    }
-    return of(this.processorInterceptorCallbacks.get(componentIdentifier));
+  public MessageProcessorInterceptorCallback retrieveInterceptorCallback() {
+    return processorInterceptorCallback;
   }
-
 }

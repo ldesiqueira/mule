@@ -35,7 +35,6 @@ import org.mule.runtime.core.exception.MessagingException;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -72,17 +71,17 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
     if (processor instanceof AnnotatedObject) {
       final AnnotatedObject annotatedObject = (AnnotatedObject) processor;
       ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Intercepting execution of Processor: '{}' for componentIdentifier: '{}'", processor.getClass(),
+                     componentIdentifier);
+      }
+
       if (componentIdentifier == null) {
-        if (logger.isWarnEnabled()) {
-          logger.warn("Processor '{}' is an '{}' but doesn't have a componentIdentifier", processor.getClass(),
-                      AnnotatedObject.class);
-          return processor.apply(publisher);
-        }
+        return processor.apply(publisher);
       }
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
-      Optional<MessageProcessorInterceptorCallback> callbackOptional =
-          interceptorManager.retrieveInterceptorCallback(componentIdentifier);
-      if (!callbackOptional.isPresent()) {
+      MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
+      if (interceptorCallback == null) {
         return processor.apply(publisher);
       }
 
@@ -90,8 +89,6 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       if (logger.isDebugEnabled()) {
         logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
       }
-
-      MessageProcessorInterceptorCallback interceptorCallback = callbackOptional.get();
 
       //TODO resolve parameters! (delegate to each processor)
       return applyInterceptor(publisher, interceptorCallback, componentParameters, processor);
@@ -107,14 +104,18 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
     return from(publisher)
         .concatMap(request -> just(request)
             .map(checkedFunction(event -> Event.builder(event)
-                .message(InternalMessage.builder(interceptorCallback.before(event.getMessage(), resolveParameters(event, processor, parameters)))
+                .message(InternalMessage
+                    .builder(interceptorCallback.before(event.getMessage(), resolveParameters(event, processor, parameters)))
                     .build())
                 .build()))
             .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
-            .map(checkedFunction(result -> Event.builder(result).message(InternalMessage.builder(interceptorCallback.after(result.getMessage(), resolveParameters(request, processor, parameters), null)).build()).build()))
+            .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
+                .builder(interceptorCallback.after(result.getMessage(), resolveParameters(request, processor, parameters), null))
+                .build()).build()))
             .doOnError(MessagingException.class,
                        checkedConsumer(exception -> interceptorCallback.after(exception.getEvent().getMessage(),
-                                                          resolveParameters(request, processor, parameters), exception))));
+                                                                              resolveParameters(request, processor, parameters),
+                                                                              exception))));
   }
 
   protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
@@ -123,10 +124,13 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       if (interceptorCallback.shouldExecuteProcessor(event.getMessage(), resolveParameters(event, processor, parameters))) {
         return processor.apply(publisher);
       } else {
-        Publisher<Event> next =  from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
-            .message(InternalMessage.builder(interceptorCallback.getResult(request.getMessage(), resolveParameters(event, processor, parameters))).build()).build())));
+        Publisher<Event> next = from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
+            .message(InternalMessage
+                .builder(interceptorCallback.getResult(request.getMessage(), resolveParameters(event, processor, parameters)))
+                .build())
+            .build())));
         if (processor instanceof InterceptableMessageProcessor) {
-        try {
+          try {
             InterceptableMessageProcessor interceptableMessageProcessor = (InterceptableMessageProcessor) processor;
             Processor nextProcessor = interceptableMessageProcessor.getNext();
             if (nextProcessor != null) {
@@ -141,8 +145,8 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
     }));
   }
 
-  private Map<String, Object> resolveParameters(Event event, Processor processor, Map<String, String> parameters) throws
-      MuleException {
+  private Map<String, Object> resolveParameters(Event event, Processor processor, Map<String, String> parameters)
+      throws MuleException {
 
     if (processor instanceof ProcessorParameterResolver) {
       return ((ProcessorParameterResolver) processor).resolve(event);
@@ -153,9 +157,9 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       Object value;
       String paramValue = entry.getValue();
       if (muleContext.getExpressionManager().isExpression(paramValue)) {
-      value = muleContext.getExpressionManager().evaluate(paramValue, event, flowConstruct).getValue();
+        value = muleContext.getExpressionManager().evaluate(paramValue, event, flowConstruct).getValue();
       } else {
-      value = valueOf(paramValue);
+        value = valueOf(paramValue);
       }
       resolvedParameters.put(entry.getKey(), value);
     }

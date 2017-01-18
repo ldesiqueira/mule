@@ -125,7 +125,7 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
 
   private void createMessageProcessorExecutionMediator() {
     messageProcessorExecutionMediator =
-        muleContext.getMessageProcessorInterceptorManager().hasInterceptionCallbacksRegistered()
+        muleContext.getMessageProcessorInterceptorManager().isInterceptionEnabled()
             ? new InterceptorMessageProcessorExecutionMediator() : new DefaultMessageProcessorExecutionMediator();
 
     if (messageProcessorExecutionMediator instanceof MuleContextAware) {
