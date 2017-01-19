@@ -11,7 +11,6 @@ import static java.lang.String.valueOf;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedConsumer;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
-import static org.mule.runtime.core.internal.util.rx.Operators.nullSafeMap;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Flux.from;
@@ -116,36 +115,45 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    * {@inheritDoc}
    */
   private Publisher<Event> intercept(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                     ComponentIdentifier componentIdentifier, Map<String, String> parameters, Processor processor) {
+                                     ComponentIdentifier componentIdentifier, Map<String, String> parameters,
+                                     Processor processor) {
     return from(publisher)
-        .concatMap(request -> just(request)
-            .map(checkedFunction(event -> Event.builder(event)
-                  .message(InternalMessage
-                      .builder(interceptorCallback.before(componentIdentifier, event.getMessage(), resolveParameters(event, processor, parameters)))
-                      .build())
-                  .build()))
-            .transform(checkedFunction(s -> doTransform(s, interceptorCallback, componentIdentifier, resolveParameters(request, processor, parameters), processor)))
-            .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
-                .builder(interceptorCallback.after(componentIdentifier, result.getMessage(), resolveParameters(request, processor, parameters), null))
-                .build()).build()))
-            .doOnError(MessagingException.class,
-                       checkedConsumer(exception -> interceptorCallback.after(componentIdentifier, exception.getEvent().getMessage(),
-                                                                              resolveParameters(request, processor, parameters),
-                                                                              exception))));
+        .flatMap(checkedFunction(request -> {
+          Map<String, Object> resolvedParameters = resolveParameters(request, processor, parameters);
+          return just(request)
+              //TODO should before/after be blocking or non-blocking (map (event) or flatMap (Publisher<Event>))
+              .map(checkedFunction(event -> Event.builder(event).message(InternalMessage
+                  .builder(interceptorCallback.before(componentIdentifier, event.getMessage(), resolvedParameters))
+                  .build()).build()))
+              .transform(checkedFunction(s -> doTransform(s, interceptorCallback, componentIdentifier, resolvedParameters,
+                                                          processor)))
+              .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
+                  .builder(interceptorCallback.after(componentIdentifier, result.getMessage(), resolvedParameters, null))
+                  .build()).build()))
+
+              //TODO should I handle or just notify the error.
+              .doOnError(MessagingException.class,
+                         checkedConsumer(exception -> interceptorCallback.after(componentIdentifier,
+                                                                                exception.getEvent().getMessage(),
+                                                                                resolvedParameters,
+                                                                                exception)));
+        }));
   }
 
   protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                         ComponentIdentifier componentIdentifier, Map<String, Object> parameters, Processor processor) {
-    return from(publisher).concatMap(checkedFunction(event -> {
+                                         ComponentIdentifier componentIdentifier, Map<String, Object> parameters,
+                                         Processor processor) {
+    return from(publisher).flatMap(checkedFunction(event -> {
       if (interceptorCallback.shouldExecuteProcessor(componentIdentifier, event.getMessage(), parameters)) {
-        return processor.apply(publisher);
+        return just(event).transform(processor);
       } else {
-        Publisher<Event> next = from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
+        Publisher<Event> next = just(event).map(checkedFunction(request -> Event.builder(event)
             .message(InternalMessage
                 .builder(interceptorCallback
                     .getResult(componentIdentifier, request.getMessage(), parameters))
                 .build())
-            .build())));
+            .build()));
+        //TODO Remove this, we should not allow to intercept this kind of processors
         if (processor instanceof InterceptableMessageProcessor) {
           try {
             InterceptableMessageProcessor interceptableMessageProcessor = (InterceptableMessageProcessor) processor;

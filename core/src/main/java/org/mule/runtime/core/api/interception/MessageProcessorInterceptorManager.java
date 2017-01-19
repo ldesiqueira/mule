@@ -8,7 +8,7 @@
 package org.mule.runtime.core.api.interception;
 
 /**
- * TODO
+ * TODO Move this to Application (deployment)
  */
 public interface MessageProcessorInterceptorManager {
 
@@ -16,5 +16,6 @@ public interface MessageProcessorInterceptorManager {
 
   void setInterceptionCallback(MessageProcessorInterceptorCallback processorInterceptorCallback);
 
+  //TODO allow multiple intereceptors
   MessageProcessorInterceptorCallback retrieveInterceptorCallback();
 }
