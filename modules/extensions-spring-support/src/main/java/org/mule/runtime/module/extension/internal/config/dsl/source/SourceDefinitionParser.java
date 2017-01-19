@@ -14,6 +14,7 @@ import static org.mule.runtime.dsl.api.component.TypeDefinition.fromType;
 import org.mule.runtime.api.meta.model.ExtensionModel;
 import org.mule.runtime.api.meta.model.parameter.ParameterGroupModel;
 import org.mule.runtime.api.meta.model.source.SourceModel;
+import org.mule.runtime.config.spring.factories.stream.CursorStreamProviderObjectFactory;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.ConfigurationException;
 import org.mule.runtime.core.api.retry.RetryPolicyTemplate;
@@ -56,7 +57,9 @@ public class SourceDefinitionParser extends ExtensionDefinitionParser {
         .withConstructorParameterDefinition(fromFixedValue(muleContext).build())
         .withSetterParameterDefinition("retryPolicyTemplate", fromChildConfiguration(RetryPolicyTemplate.class).build())
         .withSetterParameterDefinition(CONFIG_PROVIDER_ATTRIBUTE_NAME,
-                                       fromSimpleReferenceParameter(CONFIG_ATTRIBUTE_NAME).build());
+                                       fromSimpleReferenceParameter(CONFIG_ATTRIBUTE_NAME).build())
+        .withSetterParameterDefinition(CURSOR_STREAM_PROVIDER_FACTORY_FIELD_NAME,
+                                       fromChildConfiguration(CursorStreamProviderObjectFactory.class).build());
 
     List<ParameterGroupModel> inlineGroups = getInlineGroups(sourceModel);
     sourceModel.getErrorCallback().ifPresent(cb -> inlineGroups.addAll(getInlineGroups(cb)));

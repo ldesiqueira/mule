@@ -12,13 +12,13 @@ import static java.util.Optional.of;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.metadata.resolving.MetadataFailure.Builder.newFailure;
 import static org.mule.runtime.api.metadata.resolving.MetadataResult.failure;
+import static org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory.createDefault;
 import static org.mule.runtime.core.util.ClassUtils.withContextClassLoader;
 import static org.mule.runtime.core.util.TemplateParser.createMuleStyleParser;
 import static org.mule.runtime.extension.api.util.ExtensionModelUtils.requiresConfig;
 import static org.mule.runtime.extension.api.util.NameUtils.hyphenize;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.getClassLoader;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.getInitialiserEvent;
-
 import org.mule.metadata.api.ClassTypeLoader;
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.exception.MuleException;
@@ -47,6 +47,7 @@ import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.internal.connection.ConnectionManagerAdapter;
 import org.mule.runtime.core.internal.metadata.DefaultMetadataContext;
 import org.mule.runtime.core.internal.metadata.MuleMetadataService;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.core.util.TemplateParser;
 import org.mule.runtime.extension.api.declaration.type.ExtensionsTypeLoaderFactory;
 import org.mule.runtime.extension.api.exception.IllegalModelDefinitionException;
@@ -87,6 +88,7 @@ public abstract class ExtensionComponent<T extends ComponentModel<T>> extends Ab
   private final MetadataMediator<T> metadataMediator;
   private final ClassTypeLoader typeLoader;
   private final LazyValue<Boolean> requiresConfig = new LazyValue<>(this::computeRequiresConfig);
+  private final CursorStreamProviderFactory cursorStreamProviderFactory;
   protected final ClassLoader classLoader;
 
   protected FlowConstruct flowConstruct;
@@ -101,12 +103,14 @@ public abstract class ExtensionComponent<T extends ComponentModel<T>> extends Ab
   protected ExtensionComponent(ExtensionModel extensionModel,
                                T componentModel,
                                ConfigurationProvider configurationProvider,
+                               CursorStreamProviderFactory cursorStreamProviderFactory,
                                ExtensionManager extensionManager) {
     this.extensionModel = extensionModel;
     this.classLoader = getClassLoader(extensionModel);
     this.componentModel = componentModel;
     this.configurationProvider = configurationProvider;
     this.extensionManager = extensionManager;
+    this.cursorStreamProviderFactory = cursorStreamProviderFactory != null ? cursorStreamProviderFactory : createDefault();
     this.metadataMediator = new MetadataMediator<>(componentModel);
     this.typeLoader = ExtensionsTypeLoaderFactory.getDefault().createTypeLoader(classLoader);
   }
@@ -310,6 +314,10 @@ public abstract class ExtensionComponent<T extends ComponentModel<T>> extends Ab
     return Optional.of(getConfigurationProviderByModel()
         .map(provider -> provider.get(event))
         .orElseGet(() -> extensionManager.getConfiguration(extensionModel, event)));
+  }
+
+  protected CursorStreamProviderFactory getCursorStreamProviderFactory() {
+    return cursorStreamProviderFactory;
   }
 
   private Optional<ConfigurationProvider> findConfigurationProvider() {

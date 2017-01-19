@@ -15,6 +15,7 @@ import org.mule.extension.socket.api.SocketsExtension;
 import org.mule.functional.junit4.MuleArtifactFunctionalTestCase;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.util.Reference;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.el.context.MessageContext;
 import org.mule.runtime.core.util.IOUtils;
 import org.mule.tck.junit4.rule.DynamicPort;
@@ -26,7 +27,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -106,13 +106,13 @@ public abstract class SocketExtensionTestCase extends MuleArtifactFunctionalTest
   }
 
   protected void assertEvent(Message message, Object expectedContent) throws Exception {
-    String payload = IOUtils.toString((InputStream) message.getPayload().getValue());
+    String payload = IOUtils.toString((CursorStreamProvider) message.getPayload().getValue());
     assertEquals(expectedContent, payload);
   }
 
   protected Object deserializeMessage(Message message) throws Exception {
     return muleContext.getObjectSerializer().getExternalProtocol()
-        .deserialize(IOUtils.toByteArray((InputStream) message.getPayload().getValue()));
+        .deserialize(IOUtils.toByteArray((CursorStreamProvider) message.getPayload().getValue()));
   }
 
   protected Message receiveConnection() {
@@ -148,7 +148,7 @@ public abstract class SocketExtensionTestCase extends MuleArtifactFunctionalTest
     DataInputStream expectedData = new DataInputStream(expectedByteArray);
 
     // received byte array
-    byte[] bytesReceived = IOUtils.toByteArray((InputStream) message.getPayload().getValue());
+    byte[] bytesReceived = IOUtils.toByteArray((CursorStreamProvider) message.getPayload().getValue());
 
     ByteArrayInputStream bytesIn = new ByteArrayInputStream(bytesReceived);
     DataInputStream dataIn = new DataInputStream(bytesIn);

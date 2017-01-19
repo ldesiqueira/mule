@@ -9,7 +9,9 @@ package org.mule.runtime.core.internal.transformer.simple;
 import static org.mule.runtime.core.api.Event.getCurrentEvent;
 
 import org.mule.runtime.api.metadata.DataType;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.transformer.TransformerException;
+import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.message.OutputHandler;
 import org.mule.runtime.core.transformer.simple.SerializableToByteArray;
 
@@ -22,7 +24,7 @@ import java.nio.charset.Charset;
  * <code>byte[]</code> and <code>org.mule.runtime.core.message.OutputHandler</code> differently by using their byte[] content
  * rather thqn Serializing them.
  */
-public class ObjectToInputStream extends SerializableToByteArray {
+public class ObjectToInputStream extends SerializableToByteArray implements StreamConsumer {
 
   public ObjectToInputStream() {
     this.registerSourceType(DataType.STRING);
@@ -35,6 +37,8 @@ public class ObjectToInputStream extends SerializableToByteArray {
     try {
       if (src instanceof String) {
         return new ByteArrayInputStream(((String) src).getBytes(encoding));
+      } else if (src instanceof CursorStreamProvider) {
+        return ((CursorStreamProvider) src).openCursor();
       } else if (src instanceof byte[]) {
         return new ByteArrayInputStream((byte[]) src);
       } else if (src instanceof OutputHandler) {

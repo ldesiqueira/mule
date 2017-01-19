@@ -30,6 +30,7 @@ import org.mule.runtime.extension.api.runtime.source.SourceCallbackContext;
 import org.mule.runtime.module.extension.internal.loader.java.property.ParameterGroupModelProperty;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ArgumentResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ByParameterNameArgumentResolver;
+import org.mule.runtime.module.extension.internal.runtime.resolver.ByParameterNameStreamArguementResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ConfigurationArgumentResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ConnectionArgumentResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ErrorArgumentResolver;
@@ -42,6 +43,7 @@ import org.mule.runtime.module.extension.internal.runtime.resolver.ParameterReso
 import org.mule.runtime.module.extension.internal.runtime.resolver.SourceCallbackContextArgumentResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.TypedValueArgumentResolver;
 
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -128,6 +130,8 @@ public final class MethodArgumentResolverDelegate implements ArgumentResolverDel
         argumentResolver = NON_BLOCKING_CALLBACK_ARGUMENT_RESOLVER;
       } else if (MediaType.class.equals(parameterType)) {
         argumentResolver = MEDIA_TYPE_ARGUMENT_RESOLVER;
+      } else if (InputStream.class.isAssignableFrom(parameterType)) {
+        argumentResolver = new ByParameterNameStreamArguementResolver(paramNames.get(i));
       } else {
         argumentResolver = new ByParameterNameArgumentResolver<>(paramNames.get(i));
       }

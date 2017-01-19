@@ -9,6 +9,7 @@ package org.mule.runtime.module.extension.internal.runtime.message;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.toMessage;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.metadata.MediaType;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 
 import java.util.ListIterator;
@@ -27,10 +28,13 @@ final class ResultToMessageListIterator implements ListIterator<Message> {
 
   private final ListIterator<Result> delegate;
   private final MediaType mediaType;
+  private final CursorStreamProviderFactory cursorStreamProviderFactory;
 
-  ResultToMessageListIterator(ListIterator<Result> delegate, MediaType mediaType) {
+  ResultToMessageListIterator(ListIterator<Result> delegate, MediaType mediaType,
+                              CursorStreamProviderFactory cursorStreamProviderFactory) {
     this.delegate = delegate;
     this.mediaType = mediaType;
+    this.cursorStreamProviderFactory = cursorStreamProviderFactory;
   }
 
   @Override
@@ -40,7 +44,7 @@ final class ResultToMessageListIterator implements ListIterator<Message> {
 
   @Override
   public Message next() {
-    return toMessage(delegate.next(), mediaType);
+    return toMessage(delegate.next(), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
@@ -50,7 +54,7 @@ final class ResultToMessageListIterator implements ListIterator<Message> {
 
   @Override
   public Message previous() {
-    return toMessage(delegate.previous(), mediaType);
+    return toMessage(delegate.previous(), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
@@ -79,6 +83,6 @@ final class ResultToMessageListIterator implements ListIterator<Message> {
   }
 
   public void forEachRemaining(Consumer<? super Message> action) {
-    delegate.forEachRemaining(result -> action.accept(toMessage(result, mediaType)));
+    delegate.forEachRemaining(result -> action.accept(toMessage(result, mediaType, cursorStreamProviderFactory)));
   }
 }

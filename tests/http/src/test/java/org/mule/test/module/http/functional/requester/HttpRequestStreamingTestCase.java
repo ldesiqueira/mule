@@ -17,11 +17,11 @@ import static org.mule.runtime.module.http.api.HttpHeaders.Names.CONTENT_LENGTH;
 import static org.mule.runtime.module.http.api.HttpHeaders.Names.TRANSFER_ENCODING;
 import static org.mule.runtime.module.http.api.HttpHeaders.Values.CHUNKED;
 import org.mule.runtime.core.api.Event;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.util.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -159,14 +159,14 @@ public class HttpRequestStreamingTestCase extends AbstractHttpRequestTestCase {
   private void assertNoStreaming(Event response) throws Exception {
     assertNull(transferEncodingHeader);
     assertThat(Integer.parseInt(contentLengthHeader), equalTo(TEST_MESSAGE.length()));
-    assertTrue(response.getMessage().getPayload().getValue() instanceof InputStream);
+    assertTrue(response.getMessage().getPayload().getValue() instanceof CursorStreamProvider);
     assertThat(getPayloadAsString(response.getMessage()), equalTo(DEFAULT_RESPONSE));
   }
 
   private void assertStreaming(Event response) throws Exception {
     assertThat(transferEncodingHeader, equalTo(CHUNKED));
     assertNull(contentLengthHeader);
-    assertTrue(response.getMessage().getPayload().getValue() instanceof InputStream);
+    assertTrue(response.getMessage().getPayload().getValue() instanceof CursorStreamProvider);
     assertThat(getPayloadAsString(response.getMessage()), equalTo(DEFAULT_RESPONSE));
   }
 

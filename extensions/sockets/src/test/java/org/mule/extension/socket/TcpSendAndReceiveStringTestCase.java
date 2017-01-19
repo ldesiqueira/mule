@@ -7,9 +7,8 @@
 package org.mule.extension.socket;
 
 import static org.junit.Assert.assertEquals;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.util.IOUtils;
-
-import java.io.InputStream;
 
 import org.junit.Test;
 
@@ -22,10 +21,11 @@ public class TcpSendAndReceiveStringTestCase extends ParameterizedProtocolTestCa
 
   @Test
   public void sendStringAndReceiveModifiedString() throws Exception {
-    InputStream inputStream =
-        (InputStream) flowRunner("tcp-send-and-receive").withPayload(TEST_STRING).run().getMessage().getPayload().getValue();
+    CursorStreamProvider streamProvider =
+        (CursorStreamProvider) flowRunner("tcp-send-and-receive").withPayload(TEST_STRING).run().getMessage().getPayload()
+            .getValue();
 
-    String response = IOUtils.toString(inputStream);
+    String response = IOUtils.toString(streamProvider);
     assertEquals(response, RESPONSE_TEST_STRING);
   }
 }

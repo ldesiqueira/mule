@@ -9,6 +9,7 @@ package org.mule.runtime.module.extension.internal.runtime.message;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.toMessage;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.metadata.MediaType;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 
 import java.util.Collection;
@@ -29,8 +30,9 @@ public final class ResultsToMessageList extends ResultsToMessageCollection imple
 
   private final List<Result> delegate;
 
-  public ResultsToMessageList(List<Result> delegate, MediaType mediaType) {
-    super(delegate, mediaType);
+  public ResultsToMessageList(List<Result> delegate, MediaType mediaType,
+                              CursorStreamProviderFactory cursorStreamProviderFactory) {
+    super(delegate, mediaType, cursorStreamProviderFactory);
     this.delegate = delegate;
   }
 
@@ -64,39 +66,40 @@ public final class ResultsToMessageList extends ResultsToMessageCollection imple
 
   @Override
   public void sort(Comparator<? super Message> c) {
-    delegate.sort((o1, o2) -> c.compare(toMessage(o1, mediaType), toMessage(o2, mediaType)));
+    delegate.sort((o1, o2) -> c.compare(toMessage(o1, mediaType, cursorStreamProviderFactory),
+                                        toMessage(o2, mediaType, cursorStreamProviderFactory)));
   }
 
   @Override
   public Message get(int index) {
-    return toMessage(delegate.get(index), mediaType);
+    return toMessage(delegate.get(index), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
   public Message set(int index, Message message) {
     Result previous = delegate.set(index, Result.builder(message).build());
-    return previous != null ? toMessage(previous, mediaType) : null;
+    return previous != null ? toMessage(previous, mediaType, cursorStreamProviderFactory) : null;
   }
 
   @Override
   public Message remove(int index) {
     Result previous = delegate.remove(index);
-    return previous != null ? toMessage(previous, mediaType) : null;
+    return previous != null ? toMessage(previous, mediaType, cursorStreamProviderFactory) : null;
   }
 
   @Override
   public ListIterator<Message> listIterator() {
-    return new ResultToMessageListIterator(delegate.listIterator(), mediaType);
+    return new ResultToMessageListIterator(delegate.listIterator(), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
   public ListIterator<Message> listIterator(int index) {
-    return new ResultToMessageListIterator(delegate.listIterator(index), mediaType);
+    return new ResultToMessageListIterator(delegate.listIterator(index), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
   public List<Message> subList(int fromIndex, int toIndex) {
-    return new ResultsToMessageList(delegate.subList(fromIndex, toIndex), mediaType);
+    return new ResultsToMessageList(delegate.subList(fromIndex, toIndex), mediaType, cursorStreamProviderFactory);
   }
 
 }

@@ -10,6 +10,7 @@ import static java.util.stream.Collectors.toList;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.toMessage;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.metadata.MediaType;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 
 import java.util.Collection;
@@ -32,10 +33,13 @@ public class ResultsToMessageCollection implements Collection<Message> {
 
   private final Collection<Result> delegate;
   protected final MediaType mediaType;
+  protected final CursorStreamProviderFactory cursorStreamProviderFactory;
 
-  public ResultsToMessageCollection(Collection<Result> delegate, MediaType mediaType) {
+  public ResultsToMessageCollection(Collection<Result> delegate, MediaType mediaType,
+                                    CursorStreamProviderFactory cursorStreamProviderFactory) {
     this.delegate = delegate;
     this.mediaType = mediaType;
+    this.cursorStreamProviderFactory = cursorStreamProviderFactory;
   }
 
   @Override
@@ -55,7 +59,7 @@ public class ResultsToMessageCollection implements Collection<Message> {
 
   @Override
   public Iterator<Message> iterator() {
-    return new ResultToMessageIterator(delegate.iterator(), mediaType);
+    return new ResultToMessageIterator(delegate.iterator(), mediaType, cursorStreamProviderFactory);
   }
 
   @Override
@@ -70,7 +74,7 @@ public class ResultsToMessageCollection implements Collection<Message> {
 
   private <T> T[] transformArray(T[] array) {
     return (T[]) Stream.of(array)
-        .map(result -> toMessage((Result) result, mediaType))
+        .map(result -> toMessage((Result) result, mediaType, cursorStreamProviderFactory))
         .toArray(Object[]::new);
   }
 
@@ -132,17 +136,18 @@ public class ResultsToMessageCollection implements Collection<Message> {
 
   @Override
   public Spliterator<Message> spliterator() {
-    return delegate.stream().map(result -> toMessage(result, mediaType)).collect(toList()).spliterator();
+    return delegate.stream().map(result -> toMessage(result, mediaType, cursorStreamProviderFactory)).collect(toList())
+        .spliterator();
   }
 
   @Override
   public Stream<Message> stream() {
-    return delegate.stream().map(result -> toMessage(result, mediaType));
+    return delegate.stream().map(result -> toMessage(result, mediaType, cursorStreamProviderFactory));
   }
 
   @Override
   public Stream<Message> parallelStream() {
-    return delegate.parallelStream().map(result -> toMessage(result, mediaType));
+    return delegate.parallelStream().map(result -> toMessage(result, mediaType, cursorStreamProviderFactory));
   }
 
   @Override

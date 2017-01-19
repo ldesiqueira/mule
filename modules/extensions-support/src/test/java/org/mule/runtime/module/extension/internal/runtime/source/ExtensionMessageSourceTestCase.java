@@ -63,6 +63,7 @@ import org.mule.runtime.core.api.scheduler.SchedulerService;
 import org.mule.runtime.core.execution.ExceptionCallback;
 import org.mule.runtime.core.execution.MessageProcessContext;
 import org.mule.runtime.core.execution.MessageProcessingManager;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.core.retry.RetryPolicyExhaustedException;
 import org.mule.runtime.core.retry.policies.SimpleRetryPolicyTemplate;
 import org.mule.runtime.core.util.ExceptionUtils;
@@ -110,6 +111,7 @@ public class ExtensionMessageSourceTestCase extends AbstractMuleContextTestCase 
   private static final String METADATA_KEY = "metadataKey";
   private final RetryPolicyTemplate retryPolicyTemplate = new SimpleRetryPolicyTemplate(0, 2);
   private final JavaTypeLoader typeLoader = new JavaTypeLoader(this.getClass().getClassLoader());
+  private CursorStreamProviderFactory cursorStreamProviderFactory = CursorStreamProviderFactory.createDefault();
 
   @Rule
   public ExpectedException expectedException = ExpectedException.none();
@@ -198,6 +200,7 @@ public class ExtensionMessageSourceTestCase extends AbstractMuleContextTestCase 
         .setProcessContextSupplier(processContextSupplier)
         .setCompletionHandlerFactory(completionHandlerFactory)
         .setExceptionCallback(exceptionCallback)
+        .setCursorStreamProviderFactory(cursorStreamProviderFactory)
         .build());
 
     when(sourceCallbackFactory.createSourceCallback(any())).thenReturn(sourceCallback);
@@ -479,7 +482,7 @@ public class ExtensionMessageSourceTestCase extends AbstractMuleContextTestCase 
 
     ExtensionMessageSource messageSource =
         new ExtensionMessageSource(extensionModel, sourceModel, sourceAdapterFactory, configurationProvider,
-                                   retryPolicyTemplate, extensionManager);
+                                   retryPolicyTemplate, cursorStreamProviderFactory, extensionManager);
     messageSource.setListener(messageProcessor);
     messageSource.setFlowConstruct(flowConstruct);
     muleContext.getInjector().inject(messageSource);

@@ -112,7 +112,7 @@ public class HttpResponseFactory {
     final String existingContentLength = httpResponseHeaderBuilder.getContentLength();
 
     HttpEntity httpEntity;
-    final Object payload = listenerResponseBuilder.getBody();
+    Object payload = listenerResponseBuilder.getBody();
 
     if (payload == null) {
       setupContentLengthEncoding(httpResponseHeaderBuilder, 0);

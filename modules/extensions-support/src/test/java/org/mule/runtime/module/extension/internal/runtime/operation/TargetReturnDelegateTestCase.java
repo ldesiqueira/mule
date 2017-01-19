@@ -12,6 +12,7 @@ import static org.junit.Assert.assertThat;
 
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.api.Event;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.tck.size.SmallTest;
 
 import org.junit.After;
@@ -26,7 +27,7 @@ public class TargetReturnDelegateTestCase extends ValueReturnDelegateTestCase {
 
   @Override
   protected ReturnDelegate createReturnDelegate() {
-    return new TargetReturnDelegate(TARGET, componentModel, muleContext);
+    return new TargetReturnDelegate(TARGET, componentModel, CursorStreamProviderFactory.createDefault(), muleContext);
   }
 
   @After

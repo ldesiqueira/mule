@@ -12,6 +12,7 @@ import static org.junit.Assert.assertThat;
 
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.api.Event;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.tck.size.SmallTest;
 
 import org.junit.runner.RunWith;
@@ -23,7 +24,7 @@ public class ValueReturnDelegateTestCase extends ValueReturnDelegateContractTest
 
   @Override
   protected ReturnDelegate createReturnDelegate() {
-    return new ValueReturnDelegate(componentModel, muleContext);
+    return new ValueReturnDelegate(componentModel, CursorStreamProviderFactory.createDefault(), muleContext);
   }
 
   @Override

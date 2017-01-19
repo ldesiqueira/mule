@@ -8,11 +8,9 @@ package org.mule.runtime.module.extension.internal.runtime.client;
 
 import static java.lang.String.format;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
-import static org.mule.runtime.module.extension.internal.runtime.operation.OperationMessageProcessorFactory.getOperationMessageProcessor;
 import static org.mule.runtime.module.extension.internal.util.MuleExtensionUtils.getInitialiserEvent;
 import static reactor.core.publisher.Mono.from;
 import static reactor.core.publisher.Mono.just;
-
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Initialisable;
@@ -36,6 +34,7 @@ import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.internal.client.ComplexParameter;
 import org.mule.runtime.module.extension.internal.runtime.objectbuilder.DefaultObjectBuilder;
 import org.mule.runtime.module.extension.internal.runtime.operation.OperationMessageProcessor;
+import org.mule.runtime.module.extension.internal.runtime.operation.OperationMessageProcessorBuilder;
 import org.mule.runtime.module.extension.internal.runtime.resolver.StaticValueResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.TypeSafeExpressionValueResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ValueResolver;
@@ -48,7 +47,7 @@ import javax.inject.Inject;
 
 
 /**
- * This is the default implementation for a {@link ExtensionsClient}, it uses the {@link ExtensionManagerAdapter}
+ * This is the default implementation for a {@link ExtensionsClient}, it uses the {@link ExtensionManager}
  * in the {@link MuleContext} to search for the extension that wants to execute the operation from.
  * <p>
  * The concrete execution of the operation is handled by an {@link OperationMessageProcessor} instance.
@@ -114,8 +113,11 @@ public final class DefaultExtensionsClient implements ExtensionsClient, Initiali
     ConfigurationProvider config = parameters.getConfigName().map(this::findConfiguration).orElse(null);
     Map<String, ValueResolver> resolvedParams = resolveParameters(parameters.get(), getInitialiserEvent(muleContext));
     try {
-      OperationMessageProcessor processor = getOperationMessageProcessor(extension, operation, config, policyManager,
-                                                                         resolvedParams, muleContext, "");
+      OperationMessageProcessor processor = new OperationMessageProcessorBuilder(extension, operation, policyManager, muleContext)
+          .setConfigurationProvider(config)
+          .setParameters(resolvedParams)
+          .build();
+
       processor.initialise();
       processor.start();
       return processor;

@@ -55,6 +55,7 @@ import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.internal.connection.ConnectionManagerAdapter;
 import org.mule.runtime.core.internal.connection.ConnectionProviderWrapper;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.core.policy.OperationExecutionFunction;
 import org.mule.runtime.core.policy.OperationPolicy;
 import org.mule.runtime.core.policy.PolicyManager;
@@ -165,6 +166,7 @@ public abstract class AbstractOperationMessageProcessorTestCase extends Abstract
 
   protected OperationMessageProcessor messageProcessor;
 
+  protected CursorStreamProviderFactory cursorStreamProviderFactory = CursorStreamProviderFactory.createDefault();
   protected String configurationName = CONFIG_NAME;
   protected String target = EMPTY;
 

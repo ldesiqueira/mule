@@ -20,6 +20,7 @@ import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.core.execution.ExceptionCallback;
 import org.mule.runtime.core.execution.MessageProcessContext;
 import org.mule.runtime.core.execution.MessageProcessingManager;
+import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.api.runtime.source.SourceCallback;
 import org.mule.runtime.extension.api.runtime.source.SourceCallbackContext;
@@ -85,6 +86,11 @@ class DefaultSourceCallback<T, A extends Attributes> implements SourceCallback<T
       return this;
     }
 
+    public Builder<T, A> setCursorStreamProviderFactory(CursorStreamProviderFactory cursorStreamProviderFactory) {
+      product.cursorStreamProviderFactory = cursorStreamProviderFactory;
+      return this;
+    }
+
     public SourceCallback<T, A> build() {
       checkArgument(product.listener, "listener");
       checkArgument(product.flowConstruct, "flowConstruct");
@@ -93,6 +99,7 @@ class DefaultSourceCallback<T, A extends Attributes> implements SourceCallback<T
       checkArgument(product.processContextSupplier, "processContextSupplier");
       checkArgument(product.completionHandlerFactory, "completionHandlerSupplier");
       checkArgument(product.sourceModel, "sourceModel");
+      checkArgument(product.cursorStreamProviderFactory, "cursorStreamProviderFactory");
 
       return product;
     }
@@ -117,6 +124,7 @@ class DefaultSourceCallback<T, A extends Attributes> implements SourceCallback<T
   private MessageProcessingManager messageProcessingManager;
   private Supplier<MessageProcessContext> processContextSupplier;
   private SourceCompletionHandlerFactory completionHandlerFactory;
+  private CursorStreamProviderFactory cursorStreamProviderFactory;
   private boolean returnsListOfMessages = false;
 
   private DefaultSourceCallback() {}
@@ -141,12 +149,13 @@ class DefaultSourceCallback<T, A extends Attributes> implements SourceCallback<T
 
     if (resultValue instanceof Collection && returnsListOfMessages) {
       message = toMessage(Result.<Collection<Message>, Attributes>builder()
-          .output(toMessageCollection((Collection<Result>) resultValue, result.getMediaType().orElse(ANY)))
+          .output(toMessageCollection((Collection<Result>) resultValue, result.getMediaType().orElse(ANY),
+                                      cursorStreamProviderFactory))
           .attributes(NULL_ATTRIBUTES)
           .mediaType(result.getMediaType().orElse(ANY))
           .build());
     } else {
-      message = toMessage(result);
+      message = toMessage(result, result.getMediaType().orElse(ANY), cursorStreamProviderFactory);
     }
 
     messageProcessingManager.processMessage(

@@ -7,10 +7,12 @@
 package org.mule.runtime.core.transformer.simple;
 
 import org.mule.runtime.api.metadata.DataType;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.serialization.ObjectSerializer;
 import org.mule.runtime.core.api.transformer.DiscoverableTransformer;
 import org.mule.runtime.core.api.transformer.TransformerException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
+import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.transformer.AbstractTransformer;
 
 import java.io.InputStream;
@@ -19,7 +21,7 @@ import java.nio.charset.Charset;
 /**
  * <code>ByteArrayToSerializable</code> converts a serialized object to its object representation
  */
-public class ByteArrayToSerializable extends AbstractTransformer implements DiscoverableTransformer {
+public class ByteArrayToSerializable extends AbstractTransformer implements DiscoverableTransformer, StreamConsumer {
 
   /**
    * Give core transformers a slightly higher priority
@@ -29,6 +31,7 @@ public class ByteArrayToSerializable extends AbstractTransformer implements Disc
   public ByteArrayToSerializable() {
     registerSourceType(DataType.BYTE_ARRAY);
     registerSourceType(DataType.INPUT_STREAM);
+    registerSourceType(DataType.CURSOR_STREAM_PROVIDER);
   }
 
   @Override
@@ -38,6 +41,8 @@ public class ByteArrayToSerializable extends AbstractTransformer implements Disc
       final Object result;
       if (src instanceof byte[]) {
         result = serializer.getExternalProtocol().deserialize((byte[]) src);
+      } else if (src instanceof CursorStreamProvider) {
+        result = serializer.getExternalProtocol().deserialize(((CursorStreamProvider) src).openCursor());
       } else {
         result = serializer.getExternalProtocol().deserialize((InputStream) src);
       }
