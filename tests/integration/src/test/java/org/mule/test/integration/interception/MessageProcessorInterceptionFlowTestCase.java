@@ -83,6 +83,17 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
+  public void innerFlowInterception() throws Exception {
+    when(interceptorCallback.before(any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[0]);
+    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+
+    String flow = "flowWithInnerFlow";
+    flowRunner(flow).withVariable("expectedMessage", "another"/*EXPECTED_INTERCEPTED_MESSAGE*/).withPayload(TEST_MESSAGE).run().getMessage();
+    verify(flow);
+  }
+
+  @Test
   public void interceptOperationMessageProcessor() throws Exception {
     final File root = temporaryFolder.getRoot();
 

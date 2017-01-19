@@ -115,7 +115,28 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
     for (Processor processor : getProcessorsToExecute()) {
       if (flowConstruct instanceof Pipeline) {
         ProcessingStrategy processingStrategy = ((Pipeline) flowConstruct).getProcessingStrategy();
-        stream = stream.transform(processingStrategy.onProcessor(processor, processorFunction(processor)));
+        //Just a hack to make this work!
+        Processor wrappedProcessor = processor;
+        if (messageProcessorExecutionMediator instanceof InterceptorMessageProcessorExecutionMediator) {
+          wrappedProcessor = new Processor() {
+
+            @Override
+            public ProcessingType getProcessingType() {
+              return ProcessingType.IO_RW;
+            }
+
+            @Override
+            public Event process(Event event) throws MuleException {
+              return processor.process(event);
+            }
+
+            @Override
+            public Publisher<Event> apply(Publisher<Event> publisher) {
+              return processor.apply(publisher);
+            }
+          };
+        }
+        stream = stream.transform(processingStrategy.onProcessor(wrappedProcessor, processorFunction(processor)));
       } else {
         stream = stream.transform(processorFunction(processor));
       }

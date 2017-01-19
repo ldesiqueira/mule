@@ -28,4 +28,13 @@
         <test:assert expression="#[payload == expectedMessage]"/>
     </flow>
 
+    <flow name="flowWithInnerFlow">
+        <set-payload value="zaraza"/>
+        <flow-ref name="innerFlow"/>
+        <test:assert expression="#[payload == expectedMessage]"/>
+    </flow>
+    <flow name="innerFlow">
+        <set-payload value="another"/>
+    </flow>
+
 </mule>
