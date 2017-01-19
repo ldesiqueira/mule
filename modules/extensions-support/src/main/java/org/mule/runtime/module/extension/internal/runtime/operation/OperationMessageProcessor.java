@@ -27,7 +27,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 import static reactor.core.publisher.Flux.from;
 import static reactor.core.publisher.Mono.fromCallable;
 import static reactor.core.publisher.Mono.just;
-
 import org.mule.runtime.api.connection.ConnectionException;
 import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.exception.MuleException;
@@ -46,6 +45,7 @@ import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
 import org.mule.runtime.core.policy.OperationExecutionFunction;
 import org.mule.runtime.core.policy.OperationPolicy;
 import org.mule.runtime.core.policy.PolicyManager;
@@ -62,12 +62,12 @@ import org.mule.runtime.module.extension.internal.runtime.LazyExecutionContext;
 import org.mule.runtime.module.extension.internal.runtime.ParameterValueResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ResolverSet;
 
+import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
-
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 
@@ -116,9 +116,10 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
                                    ConfigurationProvider configurationProvider,
                                    String target,
                                    ResolverSet resolverSet,
+                                   RepeatableStreamFactory repeatableStreamFactory,
                                    ExtensionManager extensionManager,
                                    PolicyManager policyManager) {
-    super(extensionModel, operationModel, configurationProvider, extensionManager);
+    super(extensionModel, operationModel, configurationProvider, repeatableStreamFactory, extensionManager);
     this.extensionModel = extensionModel;
     this.operationModel = operationModel;
     this.resolverSet = resolverSet;
@@ -175,9 +176,15 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
 
   protected Mono<Event> doProcess(Event event, ExecutionContextAdapter operationContext) {
     return executeOperation(operationContext)
-        .map(value -> returnDelegate.asReturnValue(value, operationContext))
+        .map(value -> returnDelegate.asReturnValue(asRepeatable(value), operationContext))
         .otherwiseIfEmpty(fromCallable(() -> returnDelegate.asReturnValue(null, operationContext)))
         .mapError(Exceptions::unwrap);
+  }
+
+  private Object asRepeatable(Object value) {
+    return getRepeatableStreamFactory()
+        .map(factory -> value instanceof InputStream ? factory.repeatable((InputStream) value) : value)
+        .orElse(value);
   }
 
   private Mono<Object> executeOperation(ExecutionContextAdapter operationContext) {
@@ -186,8 +193,8 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
 
   private ExecutionContextAdapter<OperationModel> createExecutionContext(Optional<ConfigurationInstance> configuration,
                                                                          Map<String, Object> resolvedParameters,
-                                                                         Event event)
-      throws MuleException {
+                                                                         Event event) throws MuleException {
+    
     return new DefaultExecutionContext<>(extensionModel, configuration, resolvedParameters, operationModel, event,
                                          muleContext);
   }
@@ -277,10 +284,10 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
     if (!configurationModel.getOperationModel(operationModel.getName()).isPresent() &&
         !configurationProvider.getExtensionModel().getOperationModel(operationModel.getName()).isPresent()) {
       throw new IllegalOperationException(format(
-                                                 "Flow '%s' defines an usage of operation '%s' which points to configuration '%s'. "
-                                                     + "The selected config does not support that operation.",
-                                                 flowConstruct.getName(), operationModel.getName(),
-                                                 configurationProvider.getName()));
+          "Flow '%s' defines an usage of operation '%s' which points to configuration '%s'. "
+              + "The selected config does not support that operation.",
+          flowConstruct.getName(), operationModel.getName(),
+          configurationProvider.getName()));
     }
   }
 

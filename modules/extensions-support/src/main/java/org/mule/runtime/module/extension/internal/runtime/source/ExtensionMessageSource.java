@@ -38,6 +38,7 @@ import org.mule.runtime.core.exception.ErrorTypeLocator;
 import org.mule.runtime.core.execution.ExceptionCallback;
 import org.mule.runtime.core.execution.MessageProcessContext;
 import org.mule.runtime.core.execution.MessageProcessingManager;
+import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
 import org.mule.runtime.extension.api.runtime.source.Source;
 import org.mule.runtime.module.extension.internal.runtime.ExtensionComponent;
@@ -67,7 +68,7 @@ public class ExtensionMessageSource extends ExtensionComponent implements Messag
   private MessageProcessingManager messageProcessingManager;
 
   @Inject
-  private SchedulerService schdulerService;
+  private SchedulerService schedulerService;
 
   private final SourceModel sourceModel;
   private final SourceAdapterFactory sourceAdapterFactory;
@@ -79,10 +80,14 @@ public class ExtensionMessageSource extends ExtensionComponent implements Messag
   private Scheduler retryScheduler;
   private Scheduler flowTriggerScheduler;
 
-  public ExtensionMessageSource(ExtensionModel extensionModel, SourceModel sourceModel, SourceAdapterFactory sourceAdapterFactory,
-                                ConfigurationProvider configurationProvider, RetryPolicyTemplate retryPolicyTemplate,
+  public ExtensionMessageSource(ExtensionModel extensionModel,
+                                SourceModel sourceModel,
+                                SourceAdapterFactory sourceAdapterFactory,
+                                ConfigurationProvider configurationProvider,
+                                RetryPolicyTemplate retryPolicyTemplate,
+                                RepeatableStreamFactory repeatableStreamFactory,
                                 ExtensionManager managerAdapter) {
-    super(extensionModel, sourceModel, configurationProvider, managerAdapter);
+    super(extensionModel, sourceModel, configurationProvider, repeatableStreamFactory, managerAdapter);
     this.sourceModel = sourceModel;
     this.sourceAdapterFactory = sourceAdapterFactory;
     this.retryPolicyTemplate = retryPolicyTemplate;
@@ -168,10 +173,10 @@ public class ExtensionMessageSource extends ExtensionComponent implements Messag
   @Override
   public void doStart() throws MuleException {
     if (retryScheduler == null) {
-      retryScheduler = schdulerService.ioScheduler();
+      retryScheduler = schedulerService.ioScheduler();
     }
     if (flowTriggerScheduler == null) {
-      flowTriggerScheduler = schdulerService.cpuLightScheduler();
+      flowTriggerScheduler = schedulerService.cpuLightScheduler();
     }
 
     startSource();

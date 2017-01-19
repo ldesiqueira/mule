@@ -141,6 +141,7 @@ public abstract class ExtensionDefinitionParser {
   static final String CHILD_ELEMENT_KEY_PREFIX = "<<";
   static final String CHILD_ELEMENT_KEY_SUFFIX = ">>";
   protected static final String CONFIG_PROVIDER_ATTRIBUTE_NAME = "configurationProvider";
+  protected static final String REPETABLE_STREAM_FACTORY_FIELD_NAME = "repeatableStreamFactory";
 
   protected final ExtensionParsingContext parsingContext;
   protected final List<ObjectParsingDelegate> objectParsingDelegates = ImmutableList

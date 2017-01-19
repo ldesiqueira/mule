@@ -24,6 +24,7 @@ import org.mule.runtime.core.api.processor.MessageProcessorContainer;
 import org.mule.runtime.core.api.processor.MessageProcessorPathElement;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.core.exception.MessagingException;
+import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
 import org.mule.runtime.core.policy.PolicyManager;
 import org.mule.runtime.core.util.NotificationUtils;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
@@ -53,9 +54,10 @@ public class InterceptingOperationMessageProcessor extends OperationMessageProce
   public InterceptingOperationMessageProcessor(ExtensionModel extensionModel, OperationModel operationModel,
                                                ConfigurationProvider configurationProvider, String target,
                                                ResolverSet resolverSet,
+                                               RepeatableStreamFactory repeatableStreamFactory,
                                                ExtensionManager extensionManager,
                                                PolicyManager policyManager) {
-    super(extensionModel, operationModel, configurationProvider, target, resolverSet, extensionManager, policyManager);
+    super(extensionModel, operationModel, configurationProvider, target, resolverSet, repeatableStreamFactory, extensionManager, policyManager);
   }
 
   @Override

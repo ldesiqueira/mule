@@ -5224,6 +5224,70 @@
         </xsd:complexContent>
     </xsd:complexType>
 
+    <!--===========-->
+    <!-- Streaming -->
+    <!--===========-->
+
+    <xsd:element name="abstract-streaming-strategy" abstract="true">
+        <xsd:annotation>
+            <xsd:documentation>
+                A placeholder for a reconnection strategy element. Reconnection strategies define how Mule should attempt to handle a connection failure.
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:element name="repeatable-file-store-stream" type="repeatableFileStoreStream" substitutionGroup="abstract-streaming-strategy">
+        <xsd:annotation>
+            <xsd:documentation>
+                //TODO: ADD docs
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:complexType name="repeatableFileStoreStream">
+        <xsd:attribute name="maxInMemorySize" type="substitutableDecimal" use="optional" default="1572864">
+            <xsd:annotation>
+                <xsd:documentation>
+                    Defines the maximum memory that the stream should use to keep data in memory. If more than that is consumed then
+                    it will start to buffer the content on disk. Default value is 1.5MB.
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="sizeUnit" type="byteUnitType" use="optional" default="BYTE">
+            <xsd:annotation>
+                <xsd:documentation>
+                    The unit in which maxInMemorySize is expressed
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+    </xsd:complexType>
+
+    <xsd:element name="repeatable-in-memory-stream" type="repeatableInMemoryStream" substitutionGroup="abstract-streaming-strategy">
+        <xsd:annotation>
+            <xsd:documentation>
+                //TODO: ADD docs
+            </xsd:documentation>
+        </xsd:annotation>
+    </xsd:element>
+
+    <xsd:complexType name="repeatableInMemoryStream">
+        <xsd:attribute name="maxInMemorySize" type="substitutableDecimal" use="optional" default="1572864">
+            <xsd:annotation>
+                <xsd:documentation>
+                    This is the maximum amount of memory that will be used. If more than that is used then a STREAM_MAXIMUM_SIZE_EXCEEDED error will be raised.
+                    Default value is 1.5MB.
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="sizeUnit" type="byteUnitType" use="optional" default="BYTE">
+            <xsd:annotation>
+                <xsd:documentation>
+                    The unit in which maxInMemorySize is expressed
+                </xsd:documentation>
+            </xsd:annotation>
+        </xsd:attribute>
+    </xsd:complexType>
+
     <!--==============================================================-->
     <!--  Lifecycle Adapters                                            -->
     <!--==============================================================-->
@@ -5955,6 +6019,20 @@
             <xsd:enumeration value="MINUTES"/>
             <xsd:enumeration value="DAYS"/>
             <xsd:enumeration value="HOURS"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="byteUnitType">
+        <xsd:annotation>
+            <xsd:documentation>
+                Byte units enumeration
+            </xsd:documentation>
+        </xsd:annotation>
+        <xsd:restriction base="xsd:NMTOKEN">
+            <xsd:enumeration value="BYTE"/>
+            <xsd:enumeration value="KB"/>
+            <xsd:enumeration value="MB"/>
+            <xsd:enumeration value="GB"/>
         </xsd:restriction>
     </xsd:simpleType>
 
