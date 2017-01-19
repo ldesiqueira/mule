@@ -35,7 +35,6 @@ import org.mule.runtime.core.exception.MessagingException;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -76,13 +75,14 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
 
       AnnotatedObject annotatedObject = (AnnotatedObject) processor;
+      ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
       MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
 
       Map<String, String> componentParameters = (Map<String, String>) annotatedObject.getAnnotation(ANNOTATION_PARAMETERS);
 
       //TODO resolve parameters! (delegate to each processor)
-      return intercept(publisher, interceptorCallback, componentParameters, processor);
+      return intercept(publisher, interceptorCallback, componentIdentifier, componentParameters, processor);
     }
 
     return processor.apply(publisher);
@@ -116,37 +116,34 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    * {@inheritDoc}
    */
   private Publisher<Event> intercept(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                     Map<String, String> parameters, Processor processor) {
-    AtomicReference<Map<String, Object>> parametersHolder = new AtomicReference<>();
+                                     ComponentIdentifier componentIdentifier, Map<String, String> parameters, Processor processor) {
     return from(publisher)
         .concatMap(request -> just(request)
-            .map(checkedFunction(event -> {
-              parametersHolder.set(resolveParameters(event, processor, parameters));
-              return Event.builder(event)
+            .map(checkedFunction(event -> Event.builder(event)
                   .message(InternalMessage
-                               .builder(interceptorCallback.before(event.getMessage(), parametersHolder.get()))
-                               .build())
-                  .build();}))
-            .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
+                      .builder(interceptorCallback.before(componentIdentifier, event.getMessage(), resolveParameters(event, processor, parameters)))
+                      .build())
+                  .build()))
+            .transform(checkedFunction(s -> doTransform(s, interceptorCallback, componentIdentifier, resolveParameters(request, processor, parameters), processor)))
             .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
-                                                                             .builder(interceptorCallback.after(result.getMessage(), parametersHolder.get(), null))
-                                                                             .build()).build()))
+                .builder(interceptorCallback.after(componentIdentifier, result.getMessage(), resolveParameters(request, processor, parameters), null))
+                .build()).build()))
             .doOnError(MessagingException.class,
-                       checkedConsumer(exception -> interceptorCallback.after(exception.getEvent().getMessage(),
-                                                                              parametersHolder.get(),
+                       checkedConsumer(exception -> interceptorCallback.after(componentIdentifier, exception.getEvent().getMessage(),
+                                                                              resolveParameters(request, processor, parameters),
                                                                               exception))));
   }
 
   protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                         Map<String, String> parameters, Processor processor) {
+                                         ComponentIdentifier componentIdentifier, Map<String, Object> parameters, Processor processor) {
     return from(publisher).concatMap(checkedFunction(event -> {
-      if (interceptorCallback.shouldExecuteProcessor(event.getMessage(), resolveParameters(event, processor, parameters))) {
+      if (interceptorCallback.shouldExecuteProcessor(componentIdentifier, event.getMessage(), parameters)) {
         return processor.apply(publisher);
       } else {
         Publisher<Event> next = from(publisher).handle(nullSafeMap(checkedFunction(request -> Event.builder(event)
             .message(InternalMessage
                 .builder(interceptorCallback
-                    .getResult(request.getMessage(), resolveParameters(event, processor, parameters)))
+                    .getResult(componentIdentifier, request.getMessage(), parameters))
                 .build())
             .build())));
         if (processor instanceof InterceptableMessageProcessor) {

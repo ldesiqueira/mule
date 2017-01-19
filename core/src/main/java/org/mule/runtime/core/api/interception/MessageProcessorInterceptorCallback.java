@@ -7,6 +7,7 @@
 
 package org.mule.runtime.core.api.interception;
 
+import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.exception.MessagingException;
@@ -18,17 +19,17 @@ import java.util.Map;
  */
 public interface MessageProcessorInterceptorCallback {
 
-  default Message before(Message message, Map<String, Object> parameters) throws MuleException {
+  default Message before(ComponentIdentifier componentIdentifier, Message message, Map<String, Object> parameters) throws MuleException {
     return message;
   }
 
-  default boolean shouldExecuteProcessor(Message message, Map<String, Object> parameters) {
+  default boolean shouldExecuteProcessor(ComponentIdentifier componentIdentifier, Message message, Map<String, Object> parameters) {
     return true;
   }
 
-  Message getResult(Message message, Map<String, Object> parameters) throws MuleException;
+  Message getResult(ComponentIdentifier componentIdentifier, Message message, Map<String, Object> parameters) throws MuleException;
 
-  default Message after(Message resultMessage, Map<String, Object> parameters, MessagingException e) throws MuleException {
+  default Message after(ComponentIdentifier componentIdentifier, Message resultMessage, Map<String, Object> parameters, MessagingException e) throws MuleException {
     return resultMessage;
   }
 

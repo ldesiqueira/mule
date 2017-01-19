@@ -7,13 +7,18 @@
 
 package org.mule.test.integration.interception;
 
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.collection.IsMapContaining.hasEntry;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyMap;
 import static org.mockito.Matchers.argThat;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.when;
 import static org.mule.functional.functional.FlowAssert.verify;
+import static org.mule.runtime.api.dsl.DslConstants.CORE_NAMESPACE;
+import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.api.MuleContext;
@@ -40,6 +45,15 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
   public static final String INTERCEPTED = "intercepted";
   public static final String EXPECTED_INTERCEPTED_MESSAGE = TEST_MESSAGE + " " + INTERCEPTED;
+
+  private ComponentIdentifier loggerComponentIdentifier =
+      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("logger").build();
+  private ComponentIdentifier setPayloadComponentIdentifier =
+      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("set-payload").build();
+  private ComponentIdentifier fileReadComponentIdentifier =
+      new ComponentIdentifier.Builder().withNamespace("file").withName("read").build();
+  private ComponentIdentifier customInterceptorComponentIdentifier =
+      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("custom-interceptor").build();
 
   @Mock
   private MessageProcessorInterceptorCallback interceptorCallback;
@@ -71,10 +85,11 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
   @Test
   public void interceptLoggerMessageProcessor() throws Exception {
-    when(interceptorCallback.before(any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[0]);
-    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(false);
-    when(interceptorCallback.getResult(any(Message.class), anyMap())).then(getInterceptedMessage());
-    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+    when(interceptorCallback.before(any(ComponentIdentifier.class), any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(not(equalTo(loggerComponentIdentifier))), any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(equalTo(loggerComponentIdentifier)), any(Message.class), anyMap())).thenReturn(false);
+    when(interceptorCallback.getResult(argThat(equalTo(loggerComponentIdentifier)), any(Message.class), anyMap())).then(getInterceptedMessage());
+    when(interceptorCallback.after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[1]);
 
     String flow = "loggerProcessorFlow";
     flowRunner(flow).withVariable("expectedMessage", EXPECTED_INTERCEPTED_MESSAGE).withPayload(TEST_MESSAGE).run().getMessage();
@@ -83,26 +98,35 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
-  public void innerFlowInterception() throws Exception {
-    when(interceptorCallback.before(any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[0]);
-    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(true);
-    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+  public void interceptSetPayloadOnInnerFlowInterception() throws Exception {
+    when(interceptorCallback.before(any(ComponentIdentifier.class), any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(not(equalTo(setPayloadComponentIdentifier))), any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(equalTo(setPayloadComponentIdentifier)), any(Message.class), anyMap())).thenAnswer(invocation -> {
+      Map<String,Object> parameters = (Map<String, Object>) invocation.getArguments()[2];
+      return !parameters.getOrDefault("value", "").equals("another");
+    });
+    when(interceptorCallback.getResult(argThat(equalTo(setPayloadComponentIdentifier)), any(Message.class), anyMap())).then(getInterceptedMessage());
+    when(interceptorCallback.after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[1]);
 
     String flow = "flowWithInnerFlow";
-    flowRunner(flow).withVariable("expectedMessage", "another"/*EXPECTED_INTERCEPTED_MESSAGE*/).withPayload(TEST_MESSAGE).run().getMessage();
+    flowRunner(flow).withVariable("expectedMessage", "zaraza " + INTERCEPTED).run().getMessage();
     verify(flow);
+
+    verifyInterceptor(true);
   }
 
   @Test
   public void interceptOperationMessageProcessor() throws Exception {
     final File root = temporaryFolder.getRoot();
 
-    when(interceptorCallback.before(any(Message.class),
+    when(interceptorCallback.before(argThat(not(equalTo(fileReadComponentIdentifier))), any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.before(argThat(equalTo(fileReadComponentIdentifier)), any(Message.class),
                                     (Map<String, Object>) argThat(hasEntry("path", (Object) root.getAbsolutePath()))))
-                                        .then(invocation -> invocation.getArguments()[0]);
-    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(false);
-    when(interceptorCallback.getResult(any(Message.class), anyMap())).then(getInterceptedMessage());
-    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+                                        .then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(not(equalTo(fileReadComponentIdentifier))), any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(equalTo(fileReadComponentIdentifier)), any(Message.class), anyMap())).thenReturn(false);
+    when(interceptorCallback.getResult(argThat(equalTo(fileReadComponentIdentifier)), any(Message.class), anyMap())).then(getInterceptedMessage());
+    when(interceptorCallback.after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[1]);
 
     String flow = "operationProcessorFlow";
     flowRunner(flow).withVariable("expectedMessage", EXPECTED_INTERCEPTED_MESSAGE)
@@ -113,10 +137,11 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
   @Test
   public void interceptCustomInterceptorMessageProcessor() throws Exception {
-    when(interceptorCallback.before(any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[0]);
-    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(false);
-    when(interceptorCallback.getResult(any(Message.class), anyMap())).then(getInterceptedMessage());
-    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+    when(interceptorCallback.before(any(ComponentIdentifier.class), any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(not(equalTo(customInterceptorComponentIdentifier))), any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.shouldExecuteProcessor(argThat(equalTo(customInterceptorComponentIdentifier)), any(Message.class), anyMap())).thenReturn(false);
+    when(interceptorCallback.getResult(argThat(equalTo(customInterceptorComponentIdentifier)), any(Message.class), anyMap())).then(getInterceptedMessage());
+    when(interceptorCallback.after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[1]);
 
     String flow = "customInterceptorProcessorFlow";
     flowRunner(flow).withVariable("expectedMessage", EXPECTED_INTERCEPTED_MESSAGE).withPayload(TEST_MESSAGE).run().getMessage();
@@ -126,9 +151,9 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
   @Test
   public void shouldExecuteCustomInterceptorMessageProcessor() throws Exception {
-    when(interceptorCallback.before(any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[0]);
-    when(interceptorCallback.shouldExecuteProcessor(any(Message.class), anyMap())).thenReturn(true);
-    when(interceptorCallback.after(any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[0]);
+    when(interceptorCallback.before(any(ComponentIdentifier.class), any(Message.class), anyMap())).then(invocation -> invocation.getArguments()[1]);
+    when(interceptorCallback.shouldExecuteProcessor(any(ComponentIdentifier.class), any(Message.class), anyMap())).thenReturn(true);
+    when(interceptorCallback.after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any())).then(invocation -> invocation.getArguments()[1]);
 
     String flow = "customInterceptorNotInvokedProcessorFlow";
     flowRunner(flow).withVariable("expectedMessage", TEST_MESSAGE + "!").withPayload(TEST_MESSAGE).run().getMessage();
@@ -139,17 +164,17 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   private Answer<Message> getInterceptedMessage() {
     return invocation -> {
       final Message response = Message.builder()
-          .payload(((Message) invocation.getArguments()[0]).getPayload().getValue() + " " + INTERCEPTED)
+          .payload(((Message) invocation.getArguments()[1]).getPayload().getValue() + " " + INTERCEPTED)
           .build();
       return response;
     };
   }
 
   private void verifyInterceptor(boolean intercepted) throws MuleException {
-    Mockito.verify(interceptorCallback, atMost(2)).before(any(Message.class), anyMap());
-    Mockito.verify(interceptorCallback, atMost(2)).shouldExecuteProcessor(any(Message.class), anyMap());
-    Mockito.verify(interceptorCallback, atMost(intercepted ? 1 : 0)).getResult(any(Message.class), anyMap());
-    Mockito.verify(interceptorCallback, atMost(2)).after(any(Message.class), anyMap(), any());
+    Mockito.verify(interceptorCallback, atLeast(2)).before(any(ComponentIdentifier.class), any(Message.class), anyMap());
+    Mockito.verify(interceptorCallback, atLeast(1)).shouldExecuteProcessor(any(ComponentIdentifier.class), any(Message.class), anyMap());
+    Mockito.verify(interceptorCallback, atMost(intercepted ? 1 : 0)).getResult(any(ComponentIdentifier.class), any(Message.class), anyMap());
+    Mockito.verify(interceptorCallback, atLeast(1)).after(any(ComponentIdentifier.class), any(Message.class), anyMap(), any());
   }
 
 }
