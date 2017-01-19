@@ -32,14 +32,19 @@ import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 import org.mule.runtime.core.exception.MessagingException;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
 import java.util.HashMap;
 import java.util.Map;
 
-/**
  * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback interceptor callback}.
  *
  * @since 4.0
@@ -112,27 +117,23 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
    */
   private Publisher<Event> intercept(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
                                      Map<String, String> parameters, Processor processor) {
+    AtomicReference<Map<String, Object>> parametersHolder = new AtomicReference<>();
     return from(publisher)
         .concatMap(request -> just(request)
-            .map(checkedFunction(event -> Event.builder(event)
-                .message(InternalMessage
-                    .builder(interceptorCallback
-                        .before(event.getMessage(), resolveParameters(event, processor, parameters)))
-                    .build())
-                .build()))
+            .map(checkedFunction(event -> {
+              parametersHolder.set(resolveParameters(event, processor, parameters));
+              return Event.builder(event)
+                  .message(InternalMessage
+                               .builder(interceptorCallback.before(event.getMessage(), parametersHolder.get()))
+                               .build())
+                  .build();}))
             .transform(s -> doTransform(s, interceptorCallback, parameters, processor))
             .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
-                .builder(interceptorCallback
-                    .after(result.getMessage(),
-                           resolveParameters(request,
-                                             processor,
-                                             parameters),
-                           null))
-                .build()).build()))
+                                                                             .builder(interceptorCallback.after(result.getMessage(), parametersHolder.get(), null))
+                                                                             .build()).build()))
             .doOnError(MessagingException.class,
                        checkedConsumer(exception -> interceptorCallback.after(exception.getEvent().getMessage(),
-                                                                              resolveParameters(request, processor,
-                                                                                                parameters),
+                                                                              parametersHolder.get(),
                                                                               exception))));
   }
 
