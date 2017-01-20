@@ -27,7 +27,6 @@ import org.mule.runtime.core.api.interception.InterceptableMessageProcessor;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.interception.ProcessorParameterResolver;
-import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.processor.Processor;
 import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 import org.mule.runtime.core.exception.MessagingException;
@@ -167,11 +166,8 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
 
         return just(event).transform(processor);
       } else {
-        Publisher<Event> next = just(event).map(checkedFunction(request -> Event.builder(event)
-            .message(InternalMessage
-                .builder(interceptorCallback.getResult(componentIdentifier, request, parameters))
-                .build())
-            .build()));
+        Publisher<Event> next = just(event)
+            .map(checkedFunction(request -> interceptorCallback.getResult(componentIdentifier, request, parameters)));
         //TODO Remove this, we should not allow to intercept this kind of processors
         if (processor instanceof InterceptableMessageProcessor) {
           try {
