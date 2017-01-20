@@ -26,7 +26,7 @@ public interface MessageProcessorInterceptorCallback {
     return true;
   }
 
-  Message getResult(ComponentIdentifier componentIdentifier, Event event, Map<String, Object> parameters) throws MuleException;
+  Event getResult(ComponentIdentifier componentIdentifier, Event event, Map<String, Object> parameters) throws MuleException;
 
   default Event before(ComponentIdentifier componentIdentifier, Event event, Map<String, Object> parameters) throws MuleException {
     return event;
