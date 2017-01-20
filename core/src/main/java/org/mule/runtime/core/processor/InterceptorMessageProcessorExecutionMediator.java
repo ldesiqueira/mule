@@ -17,7 +17,6 @@ import static reactor.core.publisher.Flux.from;
 import static reactor.core.publisher.Flux.just;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
@@ -35,6 +34,7 @@ import org.mule.runtime.core.exception.MessagingException;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 import javax.xml.namespace.QName;
 import java.util.HashMap;
@@ -48,14 +48,15 @@ import java.util.Map;
 public class InterceptorMessageProcessorExecutionMediator implements MessageProcessorExecutionMediator, MuleContextAware,
     FlowConstructAware {
 
-  private transient Logger logger = LoggerFactory.getLogger(InterceptorMessageProcessorExecutionMediator.class);
-
-  private MuleContext muleContext;
-  private FlowConstruct flowConstruct;
   public static final QName SOURCE_FILE_NAME_ANNOTATION =
       new QName("http://www.mulesoft.org/schema/mule/documentation", "sourceFileName");
   public static final QName SOURCE_FILE_LINE_ANNOTATION =
       new QName("http://www.mulesoft.org/schema/mule/documentation", "sourceFileLine");
+
+  private transient Logger logger = LoggerFactory.getLogger(InterceptorMessageProcessorExecutionMediator.class);
+
+  private MuleContext muleContext;
+  private FlowConstruct flowConstruct;
 
   @Override
   public void setMuleContext(MuleContext muleContext) {
@@ -75,15 +76,13 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
     if (shouldIntercept(processor)) {
       logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
 
-      AnnotatedObject annotatedObject = (AnnotatedObject) processor;
-      ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
       MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
 
+      AnnotatedObject annotatedObject = (AnnotatedObject) processor;
       Map<String, String> componentParameters = (Map<String, String>) annotatedObject.getAnnotation(ANNOTATION_PARAMETERS);
 
-      //TODO resolve parameters! (delegate to each processor)
-      return intercept(publisher, interceptorCallback, componentIdentifier, componentParameters, processor);
+      return intercept(publisher, interceptorCallback, componentParameters, processor);
     }
 
     return processor.apply(publisher);
@@ -104,7 +103,6 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       } else {
         logger.warn("Processor '{}' is an '{}' but doesn't have a componentIdentifier", processor.getClass(),
                     AnnotatedObject.class);
-
       }
     } else {
       logger.debug("Processor '{}' is not an '{}'", processor.getClass(), AnnotatedObject.class);
@@ -113,61 +111,65 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
   }
 
 
+
   /**
    * {@inheritDoc}
    */
   private Publisher<Event> intercept(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                     ComponentIdentifier componentIdentifier, Map<String, String> parameters,
+                                     Map<String, String> parameters,
                                      Processor processor) {
     return from(publisher)
         .flatMap(checkedFunction(request -> {
-          Map<String, Object> resolvedParameters = resolveParameters(request, processor, parameters);
-          return just(request)
-              //TODO should before/after be blocking or non-blocking (map (event) or flatMap (Publisher<Event>))
-              .map(checkedFunction(event -> Event.builder(event)
-                  .message(doBefore(event, interceptorCallback, componentIdentifier, resolvedParameters, processor))
-                  .build()))
-              .transform(checkedFunction(s -> doTransform(s, interceptorCallback, componentIdentifier, resolvedParameters,
-                                                          processor)))
-              .map(checkedFunction(result -> Event.builder(result).message(InternalMessage
-                  .builder(interceptorCallback.after(componentIdentifier, result.getMessage(), resolvedParameters, null))
-                  .build()).build()))
-
-              //TODO should I handle or just notify the error.
-              .doOnError(MessagingException.class,
-                         checkedConsumer(exception -> doAfter(interceptorCallback, componentIdentifier,
-                                                              exception.getEvent().getMessage(),
-                                                              resolvedParameters,
-                                                              exception, processor)));
+          return fluxIntercept(interceptorCallback, parameters, processor, request);
         }));
   }
 
-  protected Message doBefore(Event event, MessageProcessorInterceptorCallback interceptorCallback,
-                             ComponentIdentifier componentIdentifier, Map<String, Object> parameters, Processor processor)
+  private Flux<Event> fluxIntercept(MessageProcessorInterceptorCallback interceptorCallback, Map<String, String> parameters,
+                                    Processor processor, Event request)
       throws MuleException {
 
+    Map<String, Object> resolvedParameters = resolveParameters(request, processor, parameters);
+
+    return just(request)
+        //TODO should before/after be blocking or non-blocking (map (event) or flatMap (Publisher<Event>)) --> there should be two mode those who are only meant to notify data and  those such a debugger and mocking  meant to be blocking
+        .map(checkedFunction(event -> doBefore(event, interceptorCallback, resolvedParameters, processor)))
+        .transform(checkedFunction(s -> doTransform(s, interceptorCallback, resolvedParameters, processor)))
+        .map(checkedFunction(resultEvent -> doAfter(interceptorCallback, resultEvent, resolvedParameters, null, processor)))
+        //TODO should I handle or just notify the error.
+        .doOnError(MessagingException.class,
+                   checkedConsumer(exception -> doAfter(interceptorCallback, exception.getEvent(), resolvedParameters,
+                                                        exception, processor)));
+  }
+
+
+
+  protected Event doBefore(Event event, MessageProcessorInterceptorCallback interceptorCallback,
+                           Map<String, Object> parameters, Processor processor)
+      throws MuleException {
+
+    ComponentIdentifier componentIdentifier = getComponentIdentifier(processor);
     String sourceFileName = (String) ((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_NAME_ANNOTATION);
     Integer sourceFileLine = (Integer) ((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_LINE_ANNOTATION);
 
     logger.debug("Intercepting before processor: " + componentIdentifier.toString() + " line: " + sourceFileLine + " - "
         + sourceFileName);
 
-    return interceptorCallback.before(componentIdentifier, event.getMessage(), parameters);
+    return interceptorCallback.before(componentIdentifier, event, parameters);
   }
 
-
-
   protected Publisher<Event> doTransform(Publisher<Event> publisher, MessageProcessorInterceptorCallback interceptorCallback,
-                                         ComponentIdentifier componentIdentifier, Map<String, Object> parameters,
-                                         Processor processor) {
+                                         Map<String, Object> parameters, Processor processor) {
+
+    ComponentIdentifier componentIdentifier = getComponentIdentifier(processor);
     return from(publisher).flatMap(checkedFunction(event -> {
-      if (interceptorCallback.shouldExecuteProcessor(componentIdentifier, event.getMessage(), parameters)) {
+      if (shouldNotAllowMocking(processor) ||
+          interceptorCallback.shouldExecuteProcessor(componentIdentifier, event, parameters)) {
+
         return just(event).transform(processor);
       } else {
         Publisher<Event> next = just(event).map(checkedFunction(request -> Event.builder(event)
             .message(InternalMessage
-                .builder(interceptorCallback
-                    .getResult(componentIdentifier, request.getMessage(), parameters))
+                .builder(interceptorCallback.getResult(componentIdentifier, request, parameters))
                 .build())
             .build()));
         //TODO Remove this, we should not allow to intercept this kind of processors
@@ -188,18 +190,22 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
     }));
   }
 
-  protected Message doAfter(MessageProcessorInterceptorCallback interceptorCallback,
-                            ComponentIdentifier componentIdentifier, Message resultMessage, Map<String, Object> parameters,
-                            MessagingException exception, Processor processor)
+  // TODO here we should filter those routing processors that we do not allow to mock (and log it)
+  private boolean shouldNotAllowMocking(Processor processor) {
+    return false;
+  }
+
+  protected Event doAfter(MessageProcessorInterceptorCallback interceptorCallback, Event resultEvent,
+                          Map<String, Object> parameters, MessagingException exception, Processor processor)
       throws MuleException {
 
-            String sourceFileName = (String)((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_NAME_ANNOTATION);
-      Integer sourceFileLine = (Integer)((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_LINE_ANNOTATION);
+    ComponentIdentifier componentIdentifier = getComponentIdentifier(processor);
+    String sourceFileName = (String) ((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_NAME_ANNOTATION);
+    Integer sourceFileLine = (Integer) ((AnnotatedObject) processor).getAnnotation(SOURCE_FILE_LINE_ANNOTATION);
+    logger.debug("Intercepting after processor: " + componentIdentifier.toString() + " line: " + sourceFileLine + " - "
+        + sourceFileName);
 
-
-    logger.debug("Intercepting after processor: " + componentIdentifier.toString()+ " line: " + sourceFileLine + " - " + sourceFileName);
-
-    return interceptorCallback.after(componentIdentifier, resultMessage, parameters, exception);
+    return interceptorCallback.after(componentIdentifier, resultEvent, parameters, exception);
   }
 
   private Map<String, Object> resolveParameters(Event event, Processor processor, Map<String, String> parameters)
@@ -221,6 +227,11 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       resolvedParameters.put(entry.getKey(), value);
     }
     return resolvedParameters;
+  }
+
+  protected ComponentIdentifier getComponentIdentifier(Processor processor) {
+    AnnotatedObject annotatedObject = (AnnotatedObject) processor;
+    return (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
   }
 
 }
