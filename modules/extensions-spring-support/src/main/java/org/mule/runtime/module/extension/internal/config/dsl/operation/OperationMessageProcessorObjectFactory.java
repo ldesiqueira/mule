@@ -10,7 +10,7 @@ import static org.apache.commons.lang.StringUtils.EMPTY;
 import org.mule.runtime.api.meta.model.ExtensionModel;
 import org.mule.runtime.api.meta.model.operation.OperationModel;
 import org.mule.runtime.core.api.MuleContext;
-import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
 import org.mule.runtime.core.policy.PolicyManager;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
 import org.mule.runtime.module.extension.internal.config.dsl.AbstractExtensionObjectFactory;

@@ -6,7 +6,7 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
 import org.mule.runtime.core.util.ByteUnit;
 import org.mule.runtime.dsl.api.component.ObjectFactory;
 

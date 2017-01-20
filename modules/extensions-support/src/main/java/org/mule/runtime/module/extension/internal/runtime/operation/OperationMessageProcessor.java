@@ -45,7 +45,7 @@ import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
 import org.mule.runtime.core.policy.OperationExecutionFunction;
 import org.mule.runtime.core.policy.OperationPolicy;
 import org.mule.runtime.core.policy.PolicyManager;

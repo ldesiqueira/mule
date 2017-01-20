@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.stream.bytes;
+package org.mule.runtime.core.internal.stream.bytes;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +15,7 @@ import java.io.InputStream;
  * It works by adding the concept of a zero-base position. Each position
  * represents one byte in the stream. Each time data is pulled from this stream,
  * the position advances as many bytes as read. However, the {@link #seek(long)}
- * and {@link #resetStream()} methods can be used to reset the position
+ * method can be used to reset the position.
  * <p>
  * This is not thread safe. Should not be used concurrently
  *
@@ -34,13 +34,6 @@ public abstract class CursorStream extends InputStream {
    * @param position the new position
    */
   public abstract void seek(long position) throws IOException;
-
-  /**
-   * Sets the position back to {@code 0}
-   */
-  public void resetStream() throws IOException {
-    seek(0);
-  }
 
   /**
    * @return Whether this stream is closed or not.

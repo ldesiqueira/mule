@@ -6,10 +6,7 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.FileStoreRepeatableStreamFactory;
-import org.mule.runtime.core.internal.stream.InMemoryRepeatableStreamFactory;
-import org.mule.runtime.core.util.ByteUnit;
-import org.mule.runtime.dsl.api.component.ObjectFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.InMemoryRepeatableStreamFactory;
 
 public class InMemoryRepeatableStreamFactoryObjectFactory extends BufferedRepeatableStreamFactoryObjectFactory<InMemoryRepeatableStreamFactory> {
 

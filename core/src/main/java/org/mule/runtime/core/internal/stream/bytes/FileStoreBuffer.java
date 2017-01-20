@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.stream.bytes;
+package org.mule.runtime.core.internal.stream.bytes;
 
 import static java.lang.Math.min;
 import static java.lang.Math.toIntExact;
@@ -14,9 +14,8 @@ import static java.nio.ByteBuffer.wrap;
 import static java.nio.channels.Channels.newChannel;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.api.util.Preconditions.checkArgument;
-import static org.mule.runtime.core.stream.bytes.TempFileHelper.deleteAsync;
 import org.mule.runtime.api.exception.MuleRuntimeException;
-import org.mule.runtime.core.util.func.UnsafeRunnable;
+import org.mule.runtime.core.util.func.CheckedRunnable;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -29,14 +28,25 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
- * A {@link TraversableBuffer} which is capable of handling datasets larger than this buffer's size.
+ * A buffer which provides concurrent random access to the entirety
+ * of a dataset.
  * <p>
- * This buffer works by keeping an in-memory buffer which holds as many information as possible. When
- * information which is ahead of the buffer's current position is requested then the following happens:
+ * It works with the concept of a zero-base position. Each position
+ * represents one byte in the stream. Although this buffer tracks the
+ * position of each byte, it doesn't have a position itself. That means
+ * that pulling data from this buffer does not make any current position
+ * to be moved.
+ *
+ * This buffer is capable of handling datasets larger than this buffer's size. It works by keeping
+ * an in-memory buffer which holds as many information as possible. When information which is ahead
+ * of the buffer's current position is requested then the following happens:
  * <p>
  * <ul>
- * <li>The contents of the buffer are wriiten into a temporal file</li>
+ * <li>The contents of the buffer are written into a temporal file</li>
  * <li>The buffer is cleared</li>
  * <li>The stream is consumed until the buffer is full again or the stream reaches its end</li>
  * <li>If the required data is still ahead of the buffer, then the process is repeated until the data is reached or the stream
@@ -49,10 +59,13 @@ import java.util.concurrent.locks.ReentrantLock;
  * In either case, what's really important to understand is that the buffer is <b>ALWAYS</b> moving forward. The buffer
  * will never go back and reload data from the temporal file. It only gets data from the stream.
  *
- * @since 1.0
+ * @since 4.0
  */
-public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
+public final class FileStoreBuffer {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileStoreBuffer.class);
+  
+  private final int bufferSize;
   private final InputStream stream;
   private final ByteBuffer buffer;
   private final File bufferFile;
@@ -61,6 +74,7 @@ public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
   private final Lock bufferLock = new ReentrantLock();
   private final Lock fileStoreLock = new ReentrantLock();
 
+  private boolean closed = false;
   private Range bufferRange;
   private boolean streamFullyConsumed = false;
 
@@ -71,8 +85,8 @@ public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
    * @param available  a piece of information which has already been pulled from the stream and is set as the buffer's original state
    * @param bufferSize the buffer size
    */
-  public FileStoreTraversableBuffer(InputStream stream, byte[] available, int bufferSize) {
-    super(bufferSize);
+  public FileStoreBuffer(InputStream stream, byte[] available, int bufferSize) {
+    this.bufferSize = bufferSize;
     this.stream = stream;
     this.buffer = allocateDirect(bufferSize);
 
@@ -101,12 +115,16 @@ public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
     streamChannel = newChannel(stream);
   }
 
-
   /**
    * {@inheritDoc}
+   *
+   * @throws IllegalStateException if the buffer is closed
    */
-  @Override
-  protected int doGet(ByteBuffer destination, long position, int length) {
+  public int get(ByteBuffer destination, long position, int length) {
+    if (closed) {
+      throw new IllegalStateException("Buffer is closed");
+    }
+    
     return get(destination, position, length, true);
   }
 
@@ -176,13 +194,13 @@ public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
   /**
    * {@inheritDoc}
    */
-  @Override
-  protected void doClose() {
+  protected void close() {
+    closed = true;
     buffer.clear();
     safely(streamChannel::close);
     safely(fileStore::close);
     safely(stream::close);
-    deleteAsync(bufferFile);
+    TempFileHelper.deleteAsync(bufferFile);
   }
 
   private <T> T withFileLock(Callable<T> callable) throws IOException {
@@ -222,11 +240,11 @@ public final class FileStoreTraversableBuffer extends BaseTraversableBuffer {
     return result;
   }
 
-  private void safely(UnsafeRunnable task) {
+  private void safely(CheckedRunnable task) {
     try {
       task.run();
     } catch (Exception e) {
-      // log
+      LOGGER.debug("Found exception closing buffer", e);
     }
   }
 

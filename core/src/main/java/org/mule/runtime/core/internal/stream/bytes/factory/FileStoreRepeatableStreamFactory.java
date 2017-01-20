@@ -4,14 +4,15 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream;
+package org.mule.runtime.core.internal.stream.bytes.factory;
 
-import org.mule.runtime.core.stream.bytes.CursorStreamSupplier;
+import org.mule.runtime.core.internal.stream.bytes.BufferedCursorStreamProvider;
+import org.mule.runtime.core.internal.stream.bytes.CursorStreamProvider;
 import org.mule.runtime.core.util.ByteUnit;
 
 import java.io.InputStream;
 
-public class FileStoreRepeatableStreamFactory extends BufferedRepeatableStreamFactory {
+public class FileStoreRepeatableStreamFactory extends RepeatableStreamFactory {
 
 
   public FileStoreRepeatableStreamFactory(int maxInMemorySize, ByteUnit sizeUnit) {
@@ -22,7 +23,7 @@ public class FileStoreRepeatableStreamFactory extends BufferedRepeatableStreamFa
    * {@inheritDoc}
    */
   @Override
-  public CursorStreamSupplier repeatable(InputStream inputStream) {
-    return new CursorStreamSupplier(inputStream, getBufferSize());
+  public CursorStreamProvider repeatable(InputStream inputStream) {
+    return new BufferedCursorStreamProvider(inputStream, getBufferSize());
   }
 }

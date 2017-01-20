@@ -47,7 +47,7 @@ import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.internal.connection.ConnectionManagerAdapter;
 import org.mule.runtime.core.internal.metadata.DefaultMetadataContext;
 import org.mule.runtime.core.internal.metadata.MuleMetadataService;
-import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
 import org.mule.runtime.core.util.TemplateParser;
 import org.mule.runtime.extension.api.declaration.type.ExtensionsTypeLoaderFactory;
 import org.mule.runtime.extension.api.exception.IllegalModelDefinitionException;

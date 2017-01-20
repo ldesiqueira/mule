@@ -14,7 +14,7 @@ import org.mule.runtime.api.meta.model.operation.OperationModel;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.api.processor.InterceptingMessageProcessor;
-import org.mule.runtime.core.internal.stream.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
 import org.mule.runtime.core.policy.PolicyManager;
 import org.mule.runtime.core.streaming.Consumer;
 import org.mule.runtime.core.streaming.ConsumerIterator;
