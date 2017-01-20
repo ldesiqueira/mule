@@ -45,7 +45,7 @@ import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.extension.ExtensionManager;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.core.policy.OperationExecutionFunction;
 import org.mule.runtime.core.policy.OperationPolicy;
 import org.mule.runtime.core.policy.PolicyManager;
@@ -62,7 +62,6 @@ import org.mule.runtime.module.extension.internal.runtime.LazyExecutionContext;
 import org.mule.runtime.module.extension.internal.runtime.ParameterValueResolver;
 import org.mule.runtime.module.extension.internal.runtime.resolver.ResolverSet;
 
-import java.io.InputStream;
 import java.util.Map;
 import java.util.Optional;
 
@@ -116,10 +115,10 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
                                    ConfigurationProvider configurationProvider,
                                    String target,
                                    ResolverSet resolverSet,
-                                   RepeatableStreamFactory repeatableStreamFactory,
+                                   CursorStreamProviderFactory cursorStreamProviderFactory,
                                    ExtensionManager extensionManager,
                                    PolicyManager policyManager) {
-    super(extensionModel, operationModel, configurationProvider, repeatableStreamFactory, extensionManager);
+    super(extensionModel, operationModel, configurationProvider, cursorStreamProviderFactory, extensionManager);
     this.extensionModel = extensionModel;
     this.operationModel = operationModel;
     this.resolverSet = resolverSet;
@@ -176,15 +175,9 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
 
   protected Mono<Event> doProcess(Event event, ExecutionContextAdapter operationContext) {
     return executeOperation(operationContext)
-        .map(value -> returnDelegate.asReturnValue(asRepeatable(value), operationContext))
+        .map(value -> returnDelegate.asReturnValue(value, operationContext))
         .otherwiseIfEmpty(fromCallable(() -> returnDelegate.asReturnValue(null, operationContext)))
         .mapError(Exceptions::unwrap);
-  }
-
-  private Object asRepeatable(Object value) {
-    return getRepeatableStreamFactory()
-        .map(factory -> value instanceof InputStream ? factory.repeatable((InputStream) value) : value)
-        .orElse(value);
   }
 
   private Mono<Object> executeOperation(ExecutionContextAdapter operationContext) {
@@ -213,8 +206,8 @@ public class OperationMessageProcessor extends ExtensionComponent implements Pro
     }
 
     return !isTargetPresent()
-        ? new ValueReturnDelegate(operationModel, muleContext)
-        : new TargetReturnDelegate(target, operationModel, muleContext);
+        ? new ValueReturnDelegate(operationModel, getCursorStreamProviderFactory(), muleContext)
+        : new TargetReturnDelegate(target, operationModel, getCursorStreamProviderFactory(), muleContext);
   }
 
   private boolean isTargetPresent() {

@@ -6,12 +6,12 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.bytes.factory.InMemoryRepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.InMemoryCursorStreamProviderFactory;
 
-public class InMemoryRepeatableStreamFactoryObjectFactory extends BufferedRepeatableStreamFactoryObjectFactory<InMemoryRepeatableStreamFactory> {
+public class InMemoryRepeatableStreamFactoryObjectFactory extends BufferedRepeatableStreamFactoryObjectFactory<InMemoryCursorStreamProviderFactory> {
 
   @Override
-  public InMemoryRepeatableStreamFactory getObject() throws Exception {
-    return new InMemoryRepeatableStreamFactory(getMaxInMemorySize(), getSizeUnit());
+  public InMemoryCursorStreamProviderFactory getObject() throws Exception {
+    return new InMemoryCursorStreamProviderFactory(getMaxInMemorySize(), getSizeUnit());
   }
 }

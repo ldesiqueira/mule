@@ -6,13 +6,13 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.bytes.factory.FileStoreRepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.FileStoreCursorStreamProviderFactory;
 
-public class FileStoreRepeatableStreamFactoryObjectFactory extends BufferedRepeatableStreamFactoryObjectFactory<FileStoreRepeatableStreamFactory> {
+public class FileStoreRepeatableStreamFactoryObjectFactory extends BufferedRepeatableStreamFactoryObjectFactory<FileStoreCursorStreamProviderFactory> {
 
   @Override
-  public FileStoreRepeatableStreamFactory getObject() throws Exception {
-    return new FileStoreRepeatableStreamFactory(getMaxInMemorySize(), getSizeUnit());
+  public FileStoreCursorStreamProviderFactory getObject() throws Exception {
+    return new FileStoreCursorStreamProviderFactory(getMaxInMemorySize(), getSizeUnit());
   }
 
 }

@@ -6,11 +6,11 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.core.util.ByteUnit;
 import org.mule.runtime.dsl.api.component.ObjectFactory;
 
-abstract class BufferedRepeatableStreamFactoryObjectFactory<T extends RepeatableStreamFactory> implements ObjectFactory<T> {
+abstract class BufferedRepeatableStreamFactoryObjectFactory<T extends CursorStreamProviderFactory> implements ObjectFactory<T> {
 
   public static final int DEFAULT_IN_MEMORY_SIZE = 1572864;
   public static final ByteUnit DEFAULT_SIZE_UNIT = ByteUnit.BYTE;

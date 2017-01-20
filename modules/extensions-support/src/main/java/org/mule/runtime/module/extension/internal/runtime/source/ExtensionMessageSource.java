@@ -38,7 +38,7 @@ import org.mule.runtime.core.exception.ErrorTypeLocator;
 import org.mule.runtime.core.execution.ExceptionCallback;
 import org.mule.runtime.core.execution.MessageProcessContext;
 import org.mule.runtime.core.execution.MessageProcessingManager;
-import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
 import org.mule.runtime.extension.api.runtime.source.Source;
 import org.mule.runtime.module.extension.internal.runtime.ExtensionComponent;
@@ -85,9 +85,9 @@ public class ExtensionMessageSource extends ExtensionComponent implements Messag
                                 SourceAdapterFactory sourceAdapterFactory,
                                 ConfigurationProvider configurationProvider,
                                 RetryPolicyTemplate retryPolicyTemplate,
-                                RepeatableStreamFactory repeatableStreamFactory,
+                                CursorStreamProviderFactory cursorStreamProviderFactory,
                                 ExtensionManager managerAdapter) {
-    super(extensionModel, sourceModel, configurationProvider, repeatableStreamFactory, managerAdapter);
+    super(extensionModel, sourceModel, configurationProvider, cursorStreamProviderFactory, managerAdapter);
     this.sourceModel = sourceModel;
     this.sourceAdapterFactory = sourceAdapterFactory;
     this.retryPolicyTemplate = retryPolicyTemplate;

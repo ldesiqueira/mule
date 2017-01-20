@@ -21,7 +21,7 @@ import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.ConfigurationException;
 import org.mule.runtime.core.api.retry.RetryPolicyTemplate;
 import org.mule.runtime.core.internal.connection.ConnectionManagerAdapter;
-import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
 import org.mule.runtime.extension.api.runtime.source.Source;
 import org.mule.runtime.module.extension.internal.config.dsl.AbstractExtensionObjectFactory;
@@ -51,7 +51,7 @@ public class ExtensionSourceObjectFactory extends AbstractExtensionObjectFactory
 
   private ConfigurationProvider configurationProvider;
   private RetryPolicyTemplate retryPolicyTemplate;
-  private RepeatableStreamFactory repeatableStreamFactory;
+  private CursorStreamProviderFactory cursorStreamProviderFactory;
 
   @Inject
   private ConnectionManagerAdapter connectionManager;
@@ -80,7 +80,7 @@ public class ExtensionSourceObjectFactory extends AbstractExtensionObjectFactory
                                    getSourceFactory(nonCallbackParameters, responseCallbackParameters, errorCallbackParameters),
                                    configurationProvider,
                                    getRetryPolicyTemplate(),
-                                   repeatableStreamFactory,
+                                   cursorStreamProviderFactory,
                                    muleContext.getExtensionManager());
     try {
       muleContext.getInjector().inject(messageSource);
@@ -146,7 +146,7 @@ public class ExtensionSourceObjectFactory extends AbstractExtensionObjectFactory
     this.configurationProvider = configurationProvider;
   }
 
-  public void setRepeatableStreamFactory(RepeatableStreamFactory repeatableStreamFactory) {
-    this.repeatableStreamFactory = repeatableStreamFactory;
+  public void setCursorStreamProviderFactory(CursorStreamProviderFactory cursorStreamProviderFactory) {
+    this.cursorStreamProviderFactory = cursorStreamProviderFactory;
   }
 }

@@ -45,10 +45,13 @@ import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.exception.MessagingExceptionHandler;
+import org.mule.runtime.core.api.functional.Either;
 import org.mule.runtime.core.api.lifecycle.LifecycleState;
 import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.transaction.TransactionConfig;
 import org.mule.runtime.core.internal.metadata.NullMetadataResolverFactory;
+import org.mule.runtime.core.internal.stream.bytes.CursorStreamProvider;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.core.management.stats.FlowConstructStatistics;
 import org.mule.runtime.core.util.collection.ImmutableListCollector;
 import org.mule.runtime.extension.api.annotation.param.ConfigName;
@@ -87,6 +90,7 @@ import org.mule.runtime.module.extension.internal.runtime.resolver.ValueResolver
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.InputStream;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -124,11 +128,23 @@ public class MuleExtensionUtils {
    * @return a {@link Message}
    */
   public static Message toMessage(Result result, MediaType mediaType) {
+    return toMessage(result, mediaType, null);
+  }
+
+  public static Message toMessage(Result result, MediaType mediaType, CursorStreamProviderFactory cursorStreamProviderFactory) {
     return Message.builder()
-        .payload(result.getOutput())
+        .payload(asStreamProvider(result.getOutput(), cursorStreamProviderFactory))
         .mediaType(mediaType)
         .attributes((Attributes) result.getAttributes().orElse(NULL_ATTRIBUTES))
         .build();
+  }
+
+  public static <T> Either<CursorStreamProvider, T> asStreamProvider(T value, CursorStreamProviderFactory cursorStreamProviderFactory) {
+    if (cursorStreamProviderFactory != null && value instanceof InputStream) {
+      return Either.left(cursorStreamProviderFactory.of((InputStream) value));
+    } else {
+      return Either.right(value);
+    }
   }
 
   /**
@@ -139,13 +155,15 @@ public class MuleExtensionUtils {
    * @param mediaType the {@link MediaType} of the generated {@link Message} instances
    * @return a similar collection of {@link Message}
    */
-  public static Collection<Message> toMessageCollection(Collection<Result> results, MediaType mediaType) {
+  public static Collection<Message> toMessageCollection(Collection<Result> results,
+                                                        MediaType mediaType,
+                                                        CursorStreamProviderFactory cursorStreamProviderFactory) {
     if (results instanceof List) {
-      return new ResultsToMessageList((List<Result>) results, mediaType);
+      return new ResultsToMessageList((List<Result>) results, mediaType, cursorStreamProviderFactory);
     } else if (results instanceof Set) {
-      return new ResultsToMessageSet((Set<Result>) results, mediaType);
+      return new ResultsToMessageSet((Set<Result>) results, mediaType, cursorStreamProviderFactory);
     } else {
-      return new ResultsToMessageCollection(results, mediaType);
+      return new ResultsToMessageCollection(results, mediaType, cursorStreamProviderFactory);
     }
   }
 

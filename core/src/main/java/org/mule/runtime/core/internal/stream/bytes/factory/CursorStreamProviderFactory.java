@@ -5,11 +5,11 @@ import org.mule.runtime.core.util.ByteUnit;
 
 import java.io.InputStream;
 
-public abstract class RepeatableStreamFactory {
+public abstract class CursorStreamProviderFactory {
 
   private final int bufferSize;
 
-  public RepeatableStreamFactory(int maxInMemorySize, ByteUnit sizeUnit) {
+  public CursorStreamProviderFactory(int maxInMemorySize, ByteUnit sizeUnit) {
     bufferSize = sizeUnit.toBytes(maxInMemorySize);
   }
 
@@ -17,5 +17,5 @@ public abstract class RepeatableStreamFactory {
     return bufferSize;
   }
 
-  public abstract CursorStreamProvider repeatable(InputStream inputStream);
+  public abstract CursorStreamProvider of(InputStream inputStream);
 }

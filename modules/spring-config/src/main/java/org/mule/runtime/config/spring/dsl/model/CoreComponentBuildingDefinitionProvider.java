@@ -125,8 +125,8 @@ import org.mule.runtime.core.expression.transformers.ExpressionArgument;
 import org.mule.runtime.core.expression.transformers.ExpressionTransformer;
 import org.mule.runtime.core.interceptor.LoggingInterceptor;
 import org.mule.runtime.core.interceptor.TimerInterceptor;
-import org.mule.runtime.core.internal.stream.bytes.factory.FileStoreRepeatableStreamFactory;
-import org.mule.runtime.core.internal.stream.bytes.factory.InMemoryRepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.FileStoreCursorStreamProviderFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.InMemoryCursorStreamProviderFactory;
 import org.mule.runtime.core.internal.transformer.simple.ObjectToByteArray;
 import org.mule.runtime.core.internal.transformer.simple.ObjectToString;
 import org.mule.runtime.core.model.resolvers.ArrayEntryPointResolver;
@@ -1282,11 +1282,11 @@ public class CoreComponentBuildingDefinitionProvider implements ComponentBuildin
   private List<ComponentBuildingDefinition> getStreamingDefinitions() {
     List<ComponentBuildingDefinition> buildingDefinitions = new ArrayList<>();
     buildingDefinitions.add(getStreamingStrategyDefinition("repeatable-file-store-stream",
-                                                           FileStoreRepeatableStreamFactory.class,
+                                                           FileStoreCursorStreamProviderFactory.class,
                                                            FileStoreRepeatableStreamFactoryObjectFactory.class));
 
     buildingDefinitions.add(getStreamingStrategyDefinition("repeatable-in-memory-stream",
-                                                           InMemoryRepeatableStreamFactory.class,
+                                                           InMemoryCursorStreamProviderFactory.class,
                                                            InMemoryRepeatableStreamFactoryObjectFactory.class));
     return buildingDefinitions;
   }

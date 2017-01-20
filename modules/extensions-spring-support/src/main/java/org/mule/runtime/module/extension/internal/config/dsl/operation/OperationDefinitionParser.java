@@ -19,7 +19,7 @@ import org.mule.runtime.api.meta.model.operation.OperationModel;
 import org.mule.runtime.api.meta.model.parameter.ParameterGroupModel;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.ConfigurationException;
-import org.mule.runtime.core.internal.stream.bytes.factory.RepeatableStreamFactory;
+import org.mule.runtime.core.internal.stream.bytes.factory.CursorStreamProviderFactory;
 import org.mule.runtime.core.policy.PolicyManager;
 import org.mule.runtime.dsl.api.component.ComponentBuildingDefinition.Builder;
 import org.mule.runtime.extension.api.dsl.syntax.DslElementSyntax;
@@ -63,7 +63,7 @@ public class OperationDefinitionParser extends ExtensionDefinitionParser {
         .withSetterParameterDefinition(TARGET_PARAMETER_NAME, fromSimpleParameter(TARGET_PARAMETER_NAME).build())
         .withSetterParameterDefinition(CONFIG_PROVIDER_ATTRIBUTE_NAME,
                                        fromSimpleReferenceParameter(CONFIG_ATTRIBUTE_NAME).build())
-        .withSetterParameterDefinition(REPETABLE_STREAM_FACTORY_FIELD_NAME, fromChildConfiguration(RepeatableStreamFactory.class).build());
+        .withSetterParameterDefinition(REPETABLE_STREAM_FACTORY_FIELD_NAME, fromChildConfiguration(CursorStreamProviderFactory.class).build());
 
     List<ParameterGroupModel> inlineGroups = getInlineGroups(operationModel);
 

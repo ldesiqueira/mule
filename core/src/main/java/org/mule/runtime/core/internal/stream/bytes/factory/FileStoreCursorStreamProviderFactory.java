@@ -12,10 +12,10 @@ import org.mule.runtime.core.util.ByteUnit;
 
 import java.io.InputStream;
 
-public class FileStoreRepeatableStreamFactory extends RepeatableStreamFactory {
+public class FileStoreCursorStreamProviderFactory extends CursorStreamProviderFactory {
 
 
-  public FileStoreRepeatableStreamFactory(int maxInMemorySize, ByteUnit sizeUnit) {
+  public FileStoreCursorStreamProviderFactory(int maxInMemorySize, ByteUnit sizeUnit) {
     super(maxInMemorySize, sizeUnit);
   }
 
@@ -23,7 +23,7 @@ public class FileStoreRepeatableStreamFactory extends RepeatableStreamFactory {
    * {@inheritDoc}
    */
   @Override
-  public CursorStreamProvider repeatable(InputStream inputStream) {
+  public CursorStreamProvider of(InputStream inputStream) {
     return new BufferedCursorStreamProvider(inputStream, getBufferSize());
   }
 }

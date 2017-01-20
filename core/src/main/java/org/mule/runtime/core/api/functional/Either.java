@@ -116,4 +116,14 @@ final public class Either<L, R> {
   public R getRight() {
     return right.get();
   }
+
+  public Object getValue() {
+    if (left.isPresent()) {
+      return left.get();
+    } else if (right.isPresent()) {
+      return right.get();
+    } else {
+      return null;
+    }
+  }
 }
