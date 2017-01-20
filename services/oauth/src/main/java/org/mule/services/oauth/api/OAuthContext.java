@@ -9,25 +9,25 @@ package org.mule.services.oauth.api;
 
 public interface OAuthContext {
 
-
-  String authorizationHeader(String resourceOwnerId);
-
-  /*
-   * ClientCredentials methods
-   */
-
-  void refreshAccessToken(String clientId, String clientSecret, boolean encodeInBody, String scopes)
-      throws TokenUrlResponseException, TokenNotFoundException;
-
-  /**
-   * AuthorizationCode methods
-   */
-  // Config:
-  // responseAccessToken
-  // responseRefreshToken
-  // responseExpiresIn
-  // parameterExtractors
-
-  void refreshAccessToken(String clientId, String clientSecret, String externalCallbackUrl, String resourceOwnerId)
-      throws NoRefreshTokenException, TokenUrlResponseException, TokenNotFoundException;
+  //
+  // String authorizationHeader(String resourceOwnerId);
+  //
+  // /*
+  // * ClientCredentials methods
+  // */
+  //
+  // void refreshAccessToken(String clientId, String clientSecret, boolean encodeInBody, String scopes)
+  // throws TokenUrlResponseException, TokenNotFoundException;
+  //
+  // /**
+  // * AuthorizationCode methods
+  // */
+  // // Config:
+  // // responseAccessToken
+  // // responseRefreshToken
+  // // responseExpiresIn
+  // // parameterExtractors
+  //
+  // void refreshAccessToken(String clientId, String clientSecret, String externalCallbackUrl, String resourceOwnerId)
+  // throws NoRefreshTokenException, TokenUrlResponseException, TokenNotFoundException;
 }

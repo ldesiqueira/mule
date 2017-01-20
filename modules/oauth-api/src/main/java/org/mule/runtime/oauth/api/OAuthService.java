@@ -4,14 +4,14 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.services.oauth.api;
+package org.mule.runtime.oauth.api;
 
 import org.mule.runtime.api.service.Service;
-import org.mule.runtime.core.api.lock.LockFactory;
-import org.mule.runtime.core.api.store.ListableObjectStore;
 
 public interface OAuthService extends Service {
 
   // 2 methods: one for auth code, another for client credentials ?
-  OAuthContext createOAuthContext(final LockFactory lockFactory, ListableObjectStore objectStore, final String configName);
+  // OAuthContext createOAuthContext(final LockFactory lockFactory, ListableObjectStore objectStore, final String configName);
+
+  OAuthCallbackServersManager getServersManager();
 }

@@ -4,13 +4,13 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.extension.oauth2.internal;
+package org.mule.services.oauth.internal;
 
 import org.mule.runtime.api.connection.ConnectionException;
+import org.mule.runtime.oauth.api.OAuthCallbackServersManager;
 import org.mule.service.http.api.HttpService;
 import org.mule.service.http.api.server.HttpServer;
 import org.mule.service.http.api.server.HttpServerConfiguration;
-import org.mule.service.http.api.server.HttpServerFactory;
 import org.mule.service.http.api.server.PathAndMethodRequestMatcher;
 import org.mule.service.http.api.server.RequestHandler;
 import org.mule.service.http.api.server.RequestHandlerManager;
@@ -23,8 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.inject.Inject;
-
 /**
  * In Mule 4, the http {@code requester-config} is dynamic. That means, it is evaluated and created for each event that tires to
  * send an http request. Since the OAuth config is nested inside the requester, OAuth config will be dynamic too.
@@ -35,21 +33,20 @@ import javax.inject.Inject;
  *
  * @since 4.0
  */
-public class OAuthCallbackServersManager {
+public class DefaultOAuthCallbackServersManager implements OAuthCallbackServersManager {
 
-  @Inject
   private HttpService httpService;
 
   private Map<Integer, CountedHttpServer> serversByPort = new HashMap<>();
 
-  /**
-   * Builds or returns an already built {@link HttpServer} wrapper.
-   * 
-   * @param serverConfiguration the configuration for the new server. Its port will be used to determine if a new one must be
-   *        created or an existing one returned.
-   * @return the corresponding server wrapper.
-   * @throws ConnectionException See {@link HttpServerFactory#create(HttpServerConfiguration)}
+  public DefaultOAuthCallbackServersManager(HttpService httpService) {
+    this.httpService = httpService;
+  }
+
+  /* (non-Javadoc)
+   * @see org.mule.services.oauth.internal.OAuthCallbackServersManager#getServer(org.mule.service.http.api.server.HttpServerConfiguration)
    */
+  @Override
   public synchronized HttpServer getServer(HttpServerConfiguration serverConfiguration) throws ConnectionException {
     if (!serversByPort.containsKey(serverConfiguration.getPort())) {
       serversByPort.put(serverConfiguration.getPort(),

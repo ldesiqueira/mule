@@ -20,7 +20,6 @@ import org.mule.extension.http.api.HttpResponseAttributes;
 import org.mule.extension.http.internal.listener.server.HttpListenerConfig;
 import org.mule.extension.oauth2.api.RequestAuthenticationException;
 import org.mule.extension.oauth2.internal.AbstractGrantType;
-import org.mule.extension.oauth2.internal.OAuthCallbackServersManager;
 import org.mule.extension.oauth2.internal.authorizationcode.state.ConfigOAuthContext;
 import org.mule.extension.oauth2.internal.tokenmanager.TokenManagerConfig;
 import org.mule.runtime.api.connection.ConnectionException;
@@ -41,6 +40,8 @@ import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 import org.mule.runtime.extension.api.annotation.param.display.Placement;
 import org.mule.runtime.extension.api.runtime.operation.ParameterResolver;
 import org.mule.runtime.extension.api.runtime.operation.Result;
+import org.mule.runtime.oauth.api.OAuthCallbackServersManager;
+import org.mule.runtime.oauth.api.OAuthService;
 import org.mule.service.http.api.domain.message.request.HttpRequestBuilder;
 import org.mule.service.http.api.server.HttpServer;
 import org.mule.service.http.api.server.HttpServerConfiguration;
@@ -190,7 +191,7 @@ public class DefaultAuthorizationCodeGrantType extends AbstractGrantType impleme
   @Override
   public void initialise() throws InitialisationException {
     try {
-      this.serversManager = muleContext.getRegistry().lookupObject(OAuthCallbackServersManager.class);
+      this.serversManager = muleContext.getRegistry().lookupObject(OAuthService.class).getServersManager();
       this.schedulerService = muleContext.getSchedulerService();
 
       if (tokenManager == null) {

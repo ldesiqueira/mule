@@ -6,14 +6,26 @@
  */
 package org.mule.services.oauth.internal;
 
-import org.mule.services.oauth.api.OAuthService;
+import org.mule.runtime.oauth.api.OAuthCallbackServersManager;
+import org.mule.runtime.oauth.api.OAuthService;
+import org.mule.service.http.api.HttpService;
 
 
 public class OAuthServiceImplementation implements OAuthService {
+
+  private HttpService httpService;
+
+  public OAuthServiceImplementation(HttpService httpService) {
+    this.httpService = httpService;
+  }
 
   @Override
   public String getName() {
     return "OAuthService";
   }
 
+  @Override
+  public OAuthCallbackServersManager getServersManager() {
+    return new DefaultOAuthCallbackServersManager(httpService);
+  }
 }

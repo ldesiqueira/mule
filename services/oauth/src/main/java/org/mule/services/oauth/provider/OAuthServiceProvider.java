@@ -10,18 +10,24 @@ import static java.util.Collections.singletonList;
 
 import org.mule.runtime.api.service.ServiceDefinition;
 import org.mule.runtime.api.service.ServiceProvider;
-import org.mule.services.oauth.api.OAuthService;
+import org.mule.runtime.oauth.api.OAuthService;
+import org.mule.service.http.api.HttpService;
 import org.mule.services.oauth.internal.OAuthServiceImplementation;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 public class OAuthServiceProvider implements ServiceProvider {
 
-  private OAuthServiceImplementation service = new OAuthServiceImplementation();
-  private ServiceDefinition serviceDefinition = new ServiceDefinition(OAuthService.class, service);
+  @Inject
+  private HttpService httpService;
 
   @Override
   public List<ServiceDefinition> providedServices() {
+    OAuthServiceImplementation service = new OAuthServiceImplementation(httpService);
+    ServiceDefinition serviceDefinition = new ServiceDefinition(OAuthService.class, service);
+
     return singletonList(serviceDefinition);
   }
 }

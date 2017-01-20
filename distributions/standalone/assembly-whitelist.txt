@@ -159,6 +159,7 @@
 /mule-standalone-${productVersion}/lib/mule/mule-module-xml-${productVersion}.jar
 /mule-standalone-${productVersion}/lib/mule/mule-mvel2-2.1.9-MULE-010.jar
 /mule-standalone-${productVersion}/lib/mule/mule-service-http-api-${productVersion}.jar
+/mule-standalone-${productVersion}/lib/mule/mule-service-oauth-api-${productVersion}.jar
 
 #
 # /plugins
