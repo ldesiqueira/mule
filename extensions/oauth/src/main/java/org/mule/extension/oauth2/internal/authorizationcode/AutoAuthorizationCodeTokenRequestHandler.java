@@ -97,8 +97,8 @@ public class AutoAuthorizationCodeTokenRequestHandler extends AbstractAuthorizat
           LOGGER.debug("Redirect url request code: " + authorizationCode);
         }
 
-        Result<Object, HttpResponseAttributes> tokenUrlResponse =
-            invokeTokenUrl(setMapPayloadWithTokenRequestParameters(authorizationCode), null);
+        TokenResponse tokenResponse = invokeTokenUrl(setMapPayloadWithTokenRequestParameters(authorizationCode), null, true);
+        processTokenUrlResponse(tokenResponse);
 
         String decodedState = stateDecoder.decodeOriginalState();
         String encodedResourceOwnerId = stateDecoder.decodeResourceOwnerId();
@@ -108,8 +108,6 @@ public class AutoAuthorizationCodeTokenRequestHandler extends AbstractAuthorizat
             getOauthConfig().getUserOAuthContext().getContextForResourceOwner(resourceOwnerId);
 
         logResourceOwnerOAuthContextBeforeUpdate(resourceOwnerOAuthContext);
-
-        TokenResponse tokenResponse = processTokenUrlResponse(tokenUrlResponse);
 
         updateResourceOwnerState(resourceOwnerOAuthContext, decodedState, tokenResponse);
         getOauthConfig().getUserOAuthContext().updateResourceOwnerOAuthContext(resourceOwnerOAuthContext);
@@ -195,10 +193,8 @@ public class AutoAuthorizationCodeTokenRequestHandler extends AbstractAuthorizat
     }
   }
 
-  private TokenResponse processTokenUrlResponse(Result<Object, HttpResponseAttributes> tokenUrlResponse)
+  private void processTokenUrlResponse(TokenResponse tokenResponse)
       throws TokenNotFoundException, TransformerException {
-    TokenResponse tokenResponse = processTokenResponse(tokenUrlResponse, true);
-
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Retrieved access token, refresh token and expires from token url are: %s, %s, %s",
                    tokenResponse.getAccessToken(), tokenResponse.getRefreshToken(),
@@ -206,9 +202,8 @@ public class AutoAuthorizationCodeTokenRequestHandler extends AbstractAuthorizat
     }
 
     if (!tokenResponseContentIsValid(tokenResponse)) {
-      throw new TokenNotFoundException(tokenUrlResponse);
+      throw new TokenNotFoundException(tokenResponse);
     }
-    return tokenResponse;
   }
 
   private void updateResourceOwnerState(ResourceOwnerOAuthContext resourceOwnerOAuthContext, String newState,
@@ -256,11 +251,11 @@ public class AutoAuthorizationCodeTokenRequestHandler extends AbstractAuthorizat
                                                                         "The user with user id %s has no refresh token in his OAuth state so we can't execute the refresh token call",
                                                                         resourceOwnerOAuthContext.getResourceOwnerId()));
       }
-      final Result<Object, HttpResponseAttributes> refreshTokenResponse =
-          invokeTokenUrl(setMapPayloadWithRefreshTokenRequestParameters(userRefreshToken), null);
+      final TokenResponse tokenResponse =
+          invokeTokenUrl(setMapPayloadWithRefreshTokenRequestParameters(userRefreshToken), null, true);
 
       logResourceOwnerOAuthContextBeforeUpdate(resourceOwnerOAuthContext);
-      TokenResponse tokenResponse = processTokenUrlResponse(refreshTokenResponse);
+      processTokenUrlResponse(tokenResponse);
       updateResourceOwnerState(resourceOwnerOAuthContext, null, tokenResponse);
     } catch (Exception e) {
       throw new MuleRuntimeException(e);

@@ -17,7 +17,6 @@ import static org.mule.extension.oauth2.internal.authorizationcode.state.Resourc
 import static org.mule.runtime.core.api.lifecycle.LifecycleUtils.initialiseIfNeeded;
 import static org.slf4j.LoggerFactory.getLogger;
 
-import org.mule.extension.http.api.HttpResponseAttributes;
 import org.mule.extension.oauth2.api.exception.TokenNotFoundException;
 import org.mule.extension.oauth2.internal.AbstractTokenRequestHandler;
 import org.mule.extension.oauth2.internal.ApplicationCredentials;
@@ -29,7 +28,6 @@ import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.annotation.param.UseConfig;
-import org.mule.runtime.extension.api.runtime.operation.Result;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -76,7 +74,7 @@ public class ClientCredentialsTokenRequestHandler extends AbstractTokenRequestHa
     initialiseIfNeeded(tokenManager, muleContext);
   }
 
-  private Result<Object, HttpResponseAttributes> doRefreshAccessToken() throws MuleException {
+  private TokenResponse doRefreshAccessToken(boolean retrieveRefreshToken) throws MuleException {
     final Map<String, String> formData = new HashMap<>();
 
     formData.put(GRANT_TYPE_PARAMETER, GRANT_TYPE_CLIENT_CREDENTIALS);
@@ -95,12 +93,11 @@ public class ClientCredentialsTokenRequestHandler extends AbstractTokenRequestHa
       authorization = "Basic " + encodeBase64String(format("%s:%s", clientId, clientSecret).getBytes());
     }
 
-    return invokeTokenUrl(formData, authorization);
+    return invokeTokenUrl(formData, authorization, retrieveRefreshToken);
   }
 
-  public void refreshAccessToken() throws MuleException {
-    Result<Object, HttpResponseAttributes> response = doRefreshAccessToken();
-    TokenResponse tokenResponse = processTokenResponse(response, false);
+  public void refreshAccessToken(boolean retrieveRefreshToken) throws MuleException {
+    TokenResponse tokenResponse = doRefreshAccessToken(retrieveRefreshToken);
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("Retrieved access token, refresh token and expires from token url are: %s, %s, %s",
@@ -108,7 +105,7 @@ public class ClientCredentialsTokenRequestHandler extends AbstractTokenRequestHa
     }
 
     if (!tokenResponseContentIsValid(tokenResponse)) {
-      throw new TokenNotFoundException(response);
+      throw new TokenNotFoundException(tokenResponse);
     }
 
     final ResourceOwnerOAuthContext defaultUserState =

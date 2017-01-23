@@ -77,7 +77,7 @@ public class ClientCredentialsGrantType extends AbstractGrantType implements Ini
   @Override
   public void start() throws MuleException {
     tokenRequestHandler.start();
-    tokenRequestHandler.refreshAccessToken();
+    tokenRequestHandler.refreshAccessToken(false);
   }
 
   @Override
@@ -128,7 +128,7 @@ public class ClientCredentialsGrantType extends AbstractGrantType implements Ini
         resolver.resolveExpression(tokenRequestHandler.getRefreshTokenWhen(), firstAttemptResult);
     if (shouldRetryRequest) {
       try {
-        tokenRequestHandler.refreshAccessToken();
+        tokenRequestHandler.refreshAccessToken(false);
       } catch (MuleException e) {
         throw new MuleRuntimeException(e);
       }

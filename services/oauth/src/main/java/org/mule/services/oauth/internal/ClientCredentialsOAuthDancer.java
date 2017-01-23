@@ -39,7 +39,7 @@ public class ClientCredentialsOAuthDancer extends AbstractOAuthDancer implements
   @Override
   public void refreshTokenIfNeeded(Supplier<Boolean> refreshCondition, TokenRefreshCallback callback) {
     if (refreshCondition.get()) {
-      
+
     }
   }
 

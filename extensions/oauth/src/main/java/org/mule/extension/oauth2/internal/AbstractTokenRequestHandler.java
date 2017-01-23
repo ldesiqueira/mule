@@ -7,53 +7,63 @@
 package org.mule.extension.oauth2.internal;
 
 import static java.lang.String.format;
-import static java.util.Collections.singletonMap;
 import static org.mule.extension.http.api.HttpConstants.HttpStatus.BAD_REQUEST;
 import static org.mule.extension.http.api.HttpConstants.Methods.POST;
 import static org.mule.extension.http.api.HttpHeaders.Names.AUTHORIZATION;
-import static org.mule.extension.http.api.HttpSendBodyMode.ALWAYS;
-import static org.mule.extension.http.api.HttpStreamingType.NEVER;
 import static org.mule.extension.oauth2.api.exception.OAuthErrors.TOKEN_URL_FAIL;
 import static org.mule.extension.oauth2.internal.OAuthConstants.ACCESS_TOKEN_EXPRESSION;
 import static org.mule.extension.oauth2.internal.OAuthConstants.EXPIRATION_TIME_EXPRESSION;
 import static org.mule.extension.oauth2.internal.OAuthConstants.REFRESH_TOKEN_EXPRESSION;
 import static org.mule.runtime.api.metadata.MediaType.ANY;
+import static org.mule.runtime.api.metadata.MediaType.parse;
+import static org.mule.runtime.core.util.SystemUtils.getDefaultEncoding;
 import static org.mule.runtime.core.util.concurrent.ThreadNameHelper.getPrefix;
+import static org.mule.runtime.module.http.api.HttpHeaders.Names.CONTENT_TYPE;
+import static org.mule.runtime.module.http.api.HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.extension.http.api.HttpResponseAttributes;
-import org.mule.extension.http.api.request.builder.HttpRequesterRequestBuilder;
-import org.mule.extension.http.internal.request.HttpRequestFactory;
-import org.mule.extension.http.internal.request.HttpRequesterCookieConfig;
-import org.mule.extension.http.internal.request.HttpResponseToResult;
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.lifecycle.Startable;
 import org.mule.runtime.api.lifecycle.Stoppable;
+import org.mule.runtime.api.metadata.MediaType;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.context.MuleContextAware;
 import org.mule.runtime.core.api.registry.RegistrationException;
 import org.mule.runtime.core.util.CollectionUtils;
 import org.mule.runtime.core.util.IOUtils;
+import org.mule.runtime.core.util.StringUtils;
 import org.mule.runtime.extension.api.annotation.Alias;
 import org.mule.runtime.extension.api.annotation.param.Optional;
 import org.mule.runtime.extension.api.annotation.param.Parameter;
 import org.mule.runtime.extension.api.exception.ModuleException;
 import org.mule.runtime.extension.api.runtime.operation.ParameterResolver;
 import org.mule.runtime.extension.api.runtime.operation.Result;
+import org.mule.runtime.extension.api.runtime.operation.Result.Builder;
 import org.mule.service.http.api.HttpService;
 import org.mule.service.http.api.client.HttpClient;
 import org.mule.service.http.api.client.HttpClientConfiguration;
+import org.mule.service.http.api.domain.ParameterMap;
+import org.mule.service.http.api.domain.entity.ByteArrayHttpEntity;
+import org.mule.service.http.api.domain.entity.InputStreamHttpEntity;
+import org.mule.service.http.api.domain.message.request.HttpRequest;
+import org.mule.service.http.api.domain.message.request.HttpRequestBuilder;
 import org.mule.service.http.api.domain.message.response.HttpResponse;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.CookieManager;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
 import org.slf4j.Logger;
@@ -114,22 +124,8 @@ public abstract class AbstractTokenRequestHandler implements Initialisable, Star
   private TlsContextFactory tlsContextFactory;
 
   private HttpClient client;
-  private HttpRequestFactory eventToHttpRequest;
-  private HttpResponseToResult httpResponseToMuleMessage;
 
   private static final int TOKEN_REQUEST_TIMEOUT_MILLIS = 60000;
-  private static final HttpRequesterCookieConfig REQUESTER_NO_COOKIE_CONFIG = new HttpRequesterCookieConfig() {
-
-    @Override
-    public boolean isEnableCookies() {
-      return false;
-    }
-
-    @Override
-    public CookieManager getCookieManager() {
-      return null;
-    }
-  };
 
   public ParameterResolver<Boolean> getRefreshTokenWhen() {
     return refreshTokenWhen;
@@ -147,38 +143,116 @@ public abstract class AbstractTokenRequestHandler implements Initialisable, Star
     this.tlsContextFactory = tlsContextFactory;
   }
 
-  protected Result<Object, HttpResponseAttributes> invokeTokenUrl(Map<String, String> tokenRequestFormToSend,
-                                                                  String authorization)
+  protected TokenResponse invokeTokenUrl(Map<String, String> tokenRequestFormToSend, String authorization,
+                                         boolean retrieveRefreshToken)
       throws MuleException, TokenUrlResponseException {
     try {
-      final HttpRequesterRequestBuilder requestBuilder = new HttpRequesterRequestBuilder();
-      requestBuilder.setBody(tokenRequestFormToSend);
+      final Charset encoding = MediaType.ANY.getCharset().orElse(getDefaultEncoding(muleContext));
+      final HttpRequestBuilder requestBuilder = HttpRequest.builder()
+          .setUri(tokenUrl).setMethod(POST.name())
+          .setEntity(new ByteArrayHttpEntity(encodeString(encoding, tokenRequestFormToSend).getBytes()))
+          .addHeader(CONTENT_TYPE, APPLICATION_X_WWW_FORM_URLENCODED.toRfcString());
 
       if (authorization != null) {
-        requestBuilder.setHeaders(singletonMap(AUTHORIZATION, authorization));
+        requestBuilder.addHeader(AUTHORIZATION, authorization);
       }
 
       // TODO MULE-11272 Support doing non-blocking requests
-      final HttpResponse response = client.send(eventToHttpRequest.create(requestBuilder, null, muleContext),
-                                                TOKEN_REQUEST_TIMEOUT_MILLIS, true, null);
+      final HttpResponse response = client.send(requestBuilder.build(), TOKEN_REQUEST_TIMEOUT_MILLIS, true, null);
 
-      Result<Object, HttpResponseAttributes> responseResult = httpResponseToMuleMessage.convert(ANY, response, tokenUrl);
-      final Result.Builder<Object, HttpResponseAttributes> responseBuilder =
-          Result.<Object, HttpResponseAttributes>builder(responseResult);
+      MediaType responseContentType =
+          response.getHeaderValueIgnoreCase(CONTENT_TYPE) != null ? parse(response.getHeaderValueIgnoreCase(CONTENT_TYPE)) : ANY;
+      ParameterMap headers = new ParameterMap();
+      for (String headerName : response.getHeaderNames()) {
+        headers.put(headerName, response.getHeaderValues(headerName));
+      }
 
-      if (responseResult.getAttributes().get().getStatusCode() >= BAD_REQUEST.getStatusCode()) {
+      final Builder<Object, HttpResponseAttributes> responseBuilder =
+          Result.<Object, HttpResponseAttributes>builder().mediaType(responseContentType)
+              .attributes(new HttpResponseAttributes(response.getStatusCode(), response.getReasonPhrase(), headers));
+
+      final String readBody = IOUtils.toString(((InputStreamHttpEntity) response.getEntity()).getInputStream());
+      if (responseContentType.withoutParameters().matches(APPLICATION_X_WWW_FORM_URLENCODED)) {
+        responseBuilder.output(decodeString(readBody, responseContentType.getCharset().orElse(getDefaultEncoding(muleContext))));
+      } else {
+        responseBuilder.output(readBody);
+      }
+
+      if (response.getStatusCode() >= BAD_REQUEST.getStatusCode()) {
         throw new TokenUrlResponseException(getTokenUrl(), responseBuilder.build());
       }
-
-      if (responseResult.getOutput() instanceof InputStream) {
-        return responseBuilder.output(IOUtils.toString((InputStream) responseResult.getOutput())).build();
-      } else {
-        return responseBuilder.build();
-      }
+      return processTokenResponse(responseBuilder.build(), retrieveRefreshToken);
     } catch (IOException e) {
       throw new TokenUrlResponseException(e, getTokenUrl());
     } catch (TimeoutException e) {
       throw new TokenUrlResponseException(e, getTokenUrl());
+    }
+  }
+
+  // TODO MULE-11283 Remove this
+  private static String encodeString(Charset encoding, Map parameters) {
+    String body;
+    StringBuilder result = new StringBuilder();
+    for (Map.Entry<?, ?> entry : (Set<Map.Entry<?, ?>>) ((parameters).entrySet())) {
+      String paramName = entry.getKey().toString();
+      Object paramValue = entry.getValue();
+
+      Iterable paramValues = paramValue instanceof Iterable ? (Iterable) paramValue : Arrays.asList(paramValue);
+      for (Object value : paramValues) {
+        try {
+          paramName = URLEncoder.encode(paramName, encoding.name());
+          paramValue = value != null ? URLEncoder.encode(value.toString(), encoding.name()) : null;
+        } catch (UnsupportedEncodingException e) {
+          throw new MuleRuntimeException(e);
+        }
+
+        if (result.length() > 0) {
+          result.append("&");
+        }
+        result.append(paramName);
+        if (paramValue != null) {
+          // Allowing parameters name with no value assigned
+          result.append("=");
+          result.append(paramValue);
+        }
+      }
+    }
+
+    body = result.toString();
+    return body;
+  }
+
+  // TODO MULE-11283 Remove this
+  private static ParameterMap decodeString(String encodedString, Charset encoding) {
+    ParameterMap queryParams = new ParameterMap();
+    if (!StringUtils.isBlank(encodedString)) {
+      String[] pairs = encodedString.split("&");
+      for (String pair : pairs) {
+        int idx = pair.indexOf("=");
+
+        if (idx != -1) {
+          addParam(queryParams, pair.substring(0, idx), pair.substring(idx + 1), encoding);
+        } else {
+          addParam(queryParams, pair, null, encoding);
+
+        }
+      }
+    }
+    return queryParams;
+  }
+
+  private static void addParam(ParameterMap queryParams, String name, String value, Charset encoding) {
+    queryParams.put(decode(name, encoding), decode(value, encoding));
+  }
+
+  private static String decode(String text, Charset encoding) {
+    if (text == null) {
+      return null;
+    }
+    try {
+      return URLDecoder.decode(text, encoding.name());
+    } catch (UnsupportedEncodingException e) {
+      throw new MuleRuntimeException(e);
     }
   }
 
@@ -239,7 +313,7 @@ public abstract class AbstractTokenRequestHandler implements Initialisable, Star
     }
   }
 
-  protected static class TokenResponse {
+  public static class TokenResponse {
 
     private String accessToken;
     private String refreshToken;
@@ -270,9 +344,6 @@ public abstract class AbstractTokenRequestHandler implements Initialisable, Star
     } catch (RegistrationException e) {
       throw new InitialisationException(e, this);
     }
-
-    eventToHttpRequest = new HttpRequestFactory(REQUESTER_NO_COOKIE_CONFIG, tokenUrl, POST.name(), NEVER, ALWAYS, null);
-    httpResponseToMuleMessage = new HttpResponseToResult(REQUESTER_NO_COOKIE_CONFIG, true, muleContext);
 
     String threadNamePrefix = format("%soauthToken.requester", getPrefix(muleContext));
     HttpClientConfiguration clientConfiguration = new HttpClientConfiguration.Builder()

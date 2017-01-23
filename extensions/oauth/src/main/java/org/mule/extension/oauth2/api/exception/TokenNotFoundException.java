@@ -10,6 +10,7 @@ import static java.lang.String.format;
 import static org.mule.extension.oauth2.api.exception.OAuthErrors.TOKEN_NOT_FOUND;
 
 import org.mule.extension.http.api.HttpResponseAttributes;
+import org.mule.extension.oauth2.internal.AbstractTokenRequestHandler.TokenResponse;
 import org.mule.runtime.extension.api.exception.ModuleException;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 
@@ -23,6 +24,11 @@ public class TokenNotFoundException extends ModuleException {
   public TokenNotFoundException(Result<Object, HttpResponseAttributes> tokenUrlResponse) {
     super(format("Could not extract access token or refresh token from token URL response: %s",
                  tokenUrlResponse.getOutput()),
+          TOKEN_NOT_FOUND);
+  }
+
+  public TokenNotFoundException(TokenResponse tokenResponse) {
+    super(format("Could not extract access token or refresh token from token URL response"),
           TOKEN_NOT_FOUND);
   }
 }
