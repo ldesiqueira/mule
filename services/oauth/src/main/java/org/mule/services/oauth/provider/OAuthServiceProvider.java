@@ -12,7 +12,7 @@ import org.mule.runtime.api.service.ServiceDefinition;
 import org.mule.runtime.api.service.ServiceProvider;
 import org.mule.runtime.oauth.api.OAuthService;
 import org.mule.service.http.api.HttpService;
-import org.mule.services.oauth.internal.OAuthServiceImplementation;
+import org.mule.services.oauth.internal.DefaultOAuthService;
 
 import java.util.List;
 
@@ -25,7 +25,7 @@ public class OAuthServiceProvider implements ServiceProvider {
 
   @Override
   public List<ServiceDefinition> providedServices() {
-    OAuthServiceImplementation service = new OAuthServiceImplementation(httpService);
+    DefaultOAuthService service = new DefaultOAuthService(httpService);
     ServiceDefinition serviceDefinition = new ServiceDefinition(OAuthService.class, service);
 
     return singletonList(serviceDefinition);

@@ -27,11 +27,13 @@ public interface OAuthService extends Service {
    * Creates an {@link OAuthDancer} for client credentials grant type. The dancer will use the given {@code lockProvider} and
    * {@code tokensStore} to manage its internal state.
    * 
+   * @param config the configuration for the returned {@link OAuthDancer dancer}
    * @param lockProvider a factory for {@link Lock}s, uniquely identified by the {@code name} passed to the {@link Function}.
    * @param tokensStore the repository for the tokens for the returned {@link OAuthDancer dancer}.
    * @return a client-credentials grant type dancer.
    */
-  <T> OAuthDancer createClientCredentialsGrantTypeDancer(Function<String, Lock> lockProvider, Map<String, T> tokensStore);
+  <T> OAuthDancer createClientCredentialsGrantTypeDancer(ClientCredentialsConfig config, Function<String, Lock> lockProvider,
+                                                         Map<String, T> tokensStore);
 
   /**
    * Creates an {@link OAuthDancer} for authorization code grant type. The dancer will use the given {@code lockProvider} and

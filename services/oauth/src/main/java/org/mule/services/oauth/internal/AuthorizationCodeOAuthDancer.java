@@ -9,6 +9,7 @@ package org.mule.services.oauth.internal;
 import org.mule.runtime.oauth.api.OAuthDancer;
 import org.mule.services.oauth.internal.state.ResourceOwnerOAuthContext;
 
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
@@ -28,7 +29,7 @@ public class AuthorizationCodeOAuthDancer extends AbstractOAuthDancer implements
   }
 
   @Override
-  public void refreshTokenIfNeeded(Supplier<Boolean> refreshCondition, TokenRefreshCallback callback) {
+  public void refreshTokenIfNeeded(Supplier<Boolean> refreshCondition, Charset encoding, TokenRefreshCallback callback) {
     // TODO Auto-generated method stub
 
   }

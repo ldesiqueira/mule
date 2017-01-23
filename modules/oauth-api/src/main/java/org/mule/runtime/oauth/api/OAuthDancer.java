@@ -8,6 +8,7 @@ package org.mule.runtime.oauth.api;
 
 import org.mule.runtime.oauth.api.exception.RequestAuthenticationException;
 
+import java.nio.charset.Charset;
 import java.util.function.Supplier;
 
 /**
@@ -34,9 +35,10 @@ public interface OAuthDancer {
    * {@code callback}.
    * 
    * @param refreshCondition
+   * @param encoding
    * @param callback
    */
-  void refreshTokenIfNeeded(Supplier<Boolean> refreshCondition, TokenRefreshCallback callback);
+  void refreshTokenIfNeeded(Supplier<Boolean> refreshCondition, Charset encoding, TokenRefreshCallback callback);
 
   /**
    * Clears the OAuth context in this dancer for a resource owner id.
