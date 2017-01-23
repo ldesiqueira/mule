@@ -54,4 +54,19 @@ public abstract class AbstractOAuthDancer {
     return lockProvider.apply(toString() + "-" + resourceOwnerId);
   }
 
+  /**
+   * Updates the resource owner oauth context information
+   *
+   * @param resourceOwnerOAuthContext
+   */
+  protected void updateResourceOwnerOAuthContext(ResourceOwnerOAuthContext resourceOwnerOAuthContext) {
+    final Lock resourceOwnerContextLock = resourceOwnerOAuthContext.getRefreshUserOAuthContextLock();
+    resourceOwnerContextLock.lock();
+    try {
+      tokensStore.put(resourceOwnerOAuthContext.getResourceOwnerId(), resourceOwnerOAuthContext);
+    } finally {
+      resourceOwnerContextLock.unlock();
+    }
+  }
+
 }
