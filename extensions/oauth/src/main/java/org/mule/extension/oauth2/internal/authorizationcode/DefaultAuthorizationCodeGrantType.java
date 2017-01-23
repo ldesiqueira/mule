@@ -40,7 +40,7 @@ import org.mule.runtime.extension.api.annotation.param.display.DisplayName;
 import org.mule.runtime.extension.api.annotation.param.display.Placement;
 import org.mule.runtime.extension.api.runtime.operation.ParameterResolver;
 import org.mule.runtime.extension.api.runtime.operation.Result;
-import org.mule.runtime.oauth.api.OAuthCallbackServersManager;
+import org.mule.runtime.oauth.api.OAuthHttpListenersServersManager;
 import org.mule.runtime.oauth.api.OAuthService;
 import org.mule.service.http.api.domain.message.request.HttpRequestBuilder;
 import org.mule.service.http.api.server.HttpServer;
@@ -123,7 +123,7 @@ public class DefaultAuthorizationCodeGrantType extends AbstractGrantType impleme
   @ParameterGroup(name = "token-request")
   private AutoAuthorizationCodeTokenRequestHandler tokenRequestHandler;
 
-  private OAuthCallbackServersManager serversManager;
+  private OAuthHttpListenersServersManager serversManager;
   private SchedulerService schedulerService;
 
   /**

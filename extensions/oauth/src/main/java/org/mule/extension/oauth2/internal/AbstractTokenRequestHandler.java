@@ -34,7 +34,6 @@ import org.mule.runtime.api.lifecycle.Stoppable;
 import org.mule.runtime.api.tls.TlsContextFactory;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.context.MuleContextAware;
-import org.mule.runtime.core.api.message.InternalMessage;
 import org.mule.runtime.core.api.registry.RegistrationException;
 import org.mule.runtime.core.util.CollectionUtils;
 import org.mule.runtime.core.util.IOUtils;
@@ -181,14 +180,6 @@ public abstract class AbstractTokenRequestHandler implements Initialisable, Star
     } catch (TimeoutException e) {
       throw new TokenUrlResponseException(e, getTokenUrl());
     }
-  }
-
-  private InternalMessage buildMessageFromResult(Result<Object, HttpResponseAttributes> responseResult, Object payload) {
-    return InternalMessage.builder()
-        .payload(payload)
-        .attributes(responseResult.getAttributes().get())
-        .mediaType(responseResult.getMediaType().orElse(ANY))
-        .build();
   }
 
   protected String getTokenUrl() {

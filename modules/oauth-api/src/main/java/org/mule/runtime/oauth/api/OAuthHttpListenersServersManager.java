@@ -12,7 +12,11 @@ import org.mule.service.http.api.server.HttpServerConfiguration;
 import org.mule.service.http.api.server.HttpServerFactory;
 
 
-public interface OAuthCallbackServersManager {
+/**
+ * @deprecated Use only internal to the dancer
+ */
+@Deprecated
+public interface OAuthHttpListenersServersManager {
 
   /**
    * Builds or returns an already built {@link HttpServer} wrapper.

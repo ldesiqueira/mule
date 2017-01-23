@@ -7,7 +7,7 @@
 package org.mule.services.oauth.internal;
 
 import org.mule.runtime.api.connection.ConnectionException;
-import org.mule.runtime.oauth.api.OAuthCallbackServersManager;
+import org.mule.runtime.oauth.api.OAuthHttpListenersServersManager;
 import org.mule.service.http.api.HttpService;
 import org.mule.service.http.api.server.HttpServer;
 import org.mule.service.http.api.server.HttpServerConfiguration;
@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @since 4.0
  */
-public class DefaultOAuthCallbackServersManager implements OAuthCallbackServersManager {
+public class DefaultOAuthCallbackServersManager implements OAuthHttpListenersServersManager {
 
   private HttpService httpService;
 

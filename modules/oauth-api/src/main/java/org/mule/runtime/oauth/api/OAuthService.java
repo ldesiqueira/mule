@@ -8,10 +8,44 @@ package org.mule.runtime.oauth.api;
 
 import org.mule.runtime.api.service.Service;
 
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.function.Function;
+
+/**
+ * Allows for creation of {@link OAuthDancer} implementations for the supported grant types:
+ * <ul>
+ * <li>Authorization Code Grant Type</li>
+ * <li>Client Credentials</li>
+ * </ul>
+ *
+ * @since 4.0
+ */
 public interface OAuthService extends Service {
 
-  // 2 methods: one for auth code, another for client credentials ?
-  // OAuthContext createOAuthContext(final LockFactory lockFactory, ListableObjectStore objectStore, final String configName);
+  /**
+   * Creates an {@link OAuthDancer} for client credentials grant type. The dancer will use the given {@code lockProvider} and
+   * {@code tokensStore} to manage its internal state.
+   * 
+   * @param lockProvider a factory for {@link Lock}s, uniquely identified by the {@code name} passed to the {@link Function}.
+   * @param tokensStore the repository for the tokens for the returned {@link OAuthDancer dancer}.
+   * @return a client-credentials grant type dancer.
+   */
+  <T> OAuthDancer createClientCredentialsGrantTypeDancer(Function<String, Lock> lockProvider, Map<String, T> tokensStore);
 
-  OAuthCallbackServersManager getServersManager();
+  /**
+   * Creates an {@link OAuthDancer} for authorization code grant type. The dancer will use the given {@code lockProvider} and
+   * {@code tokensStore} to manage its internal state.
+   * 
+   * @param lockProvider a factory for {@link Lock}s, uniquely identified by the {@code name} passed to the {@link Function}.
+   * @param tokensStore the repository for the tokens for the returned {@link OAuthDancer dancer}.
+   * @return an authorization-code grant type dancer.
+   */
+  <T> OAuthDancer createAuthorizationCodeGrantTypeDancer(Function<String, Lock> lockProvider, Map<String, T> tokensStore);
+
+  /**
+   * @deprecated Use only internal to the dancer
+   */
+  @Deprecated
+  OAuthHttpListenersServersManager getServersManager();
 }
