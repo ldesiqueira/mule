@@ -41,7 +41,7 @@ import org.mule.runtime.core.context.notification.ServerNotificationManager;
 import org.mule.runtime.core.exception.MessagingException;
 import org.mule.runtime.core.execution.MessageProcessorExecutionTemplate;
 import org.mule.runtime.core.processor.DefaultMessageProcessorExecutionMediator;
-import org.mule.runtime.core.processor.InterceptorMessageProcessorExecutionMediator;
+import org.mule.runtime.core.processor.InterceptorMessageProcessorExecutionStrategy;
 import org.mule.runtime.core.processor.MessageProcessorExecutionMediator;
 import org.mule.runtime.core.util.NotificationUtils;
 import org.mule.runtime.core.util.StringUtils;
@@ -127,7 +127,7 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
   private void createMessageProcessorExecutionMediator() {
     messageProcessorExecutionMediator =
         muleContext.getMessageProcessorInterceptorManager().isInterceptionEnabled()
-            ? new InterceptorMessageProcessorExecutionMediator() : new DefaultMessageProcessorExecutionMediator();
+            ? new InterceptorMessageProcessorExecutionStrategy() : new DefaultMessageProcessorExecutionMediator();
 
     if (messageProcessorExecutionMediator instanceof MuleContextAware) {
       ((MuleContextAware) messageProcessorExecutionMediator).setMuleContext(muleContext);

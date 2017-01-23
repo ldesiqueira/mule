@@ -8,39 +8,43 @@
 package org.mule.runtime.core.processor.interceptor;
 
 import static org.mule.runtime.api.util.Preconditions.checkNotNull;
-import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
+import org.mule.runtime.core.api.interception.InterceptionHandler;
+import org.mule.runtime.core.api.interception.InterceptionHandlerChain;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * TODO
  */
 public class DefaultMessageProcessorInterceptorManager implements MessageProcessorInterceptorManager {
 
-  private MessageProcessorInterceptorCallback processorInterceptorCallback;
+  private List<InterceptionHandler> interceptionHandlers = new ArrayList<>();
 
   /**
    * {@inheritDoc}
    */
   @Override
   public boolean isInterceptionEnabled() {
-    return processorInterceptorCallback != null;
+    return !interceptionHandlers.isEmpty();
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void setInterceptionCallback(MessageProcessorInterceptorCallback processorInterceptorCallback) {
-    checkNotNull(processorInterceptorCallback, "processorInterceptorCallback cannot be null");
+  public void addInterceptionHandler(InterceptionHandler interceptionHandler) {
+    checkNotNull(interceptionHandler, "interceptionHandler cannot be null");
 
-    this.processorInterceptorCallback = processorInterceptorCallback;
+    this.interceptionHandlers.add(interceptionHandler);
   }
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public MessageProcessorInterceptorCallback retrieveInterceptorCallback() {
-    return processorInterceptorCallback;
+  public InterceptionHandlerChain retrieveInterceptionHandlerChain() {
+    return new InterceptionHandlerChain(interceptionHandlers);
   }
 }

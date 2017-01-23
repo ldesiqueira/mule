@@ -7,13 +7,15 @@
 
 package org.mule.runtime.core.api.interception;
 
-import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.Event;
 
 /**
- * TODO remove this (gfernandes)
+ * TODO
  */
-public interface InterceptableMessageProcessor {
+public interface InterceptionCallback {
 
-  Processor getNext();
+  InterceptionCallbackResult skipProcessor(Event result);
+
+  InterceptionCallbackResult nextProcessor(Event request);
 
 }

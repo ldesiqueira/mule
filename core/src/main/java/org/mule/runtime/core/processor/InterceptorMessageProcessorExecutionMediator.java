@@ -8,22 +8,19 @@
 package org.mule.runtime.core.processor;
 
 import static java.lang.String.valueOf;
-import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedConsumer;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
-import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
-import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Flux.from;
 import static reactor.core.publisher.Flux.just;
+import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
+import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import org.mule.runtime.api.exception.MuleException;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.construct.FlowConstructAware;
 import org.mule.runtime.core.api.context.MuleContextAware;
-import org.mule.runtime.core.api.interception.InterceptableMessageProcessor;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.interception.ProcessorParameterResolver;
@@ -76,12 +73,13 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
 
       MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
-      MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
+      //MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
 
       AnnotatedObject annotatedObject = (AnnotatedObject) processor;
       Map<String, String> componentParameters = (Map<String, String>) annotatedObject.getAnnotation(ANNOTATION_PARAMETERS);
 
-      return intercept(publisher, interceptorCallback, componentParameters, processor);
+      //return intercept(publisher, interceptorCallback, componentParameters, processor);
+      return processor.apply(publisher);
     }
 
     return processor.apply(publisher);
@@ -93,7 +91,7 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
       ComponentIdentifier componentIdentifier = (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
       if (componentIdentifier != null) {
         MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
-        MessageProcessorInterceptorCallback interceptorCallback = interceptorManager.retrieveInterceptorCallback();
+        MessageProcessorInterceptorCallback interceptorCallback = null; //= interceptorManager.retrieveInterceptorHandler();
         if (null != interceptorCallback) {
           return true;
         } else {
@@ -161,26 +159,15 @@ public class InterceptorMessageProcessorExecutionMediator implements MessageProc
 
     ComponentIdentifier componentIdentifier = getComponentIdentifier(processor);
     return from(publisher).flatMap(checkedFunction(event -> {
+      //continue
       if (shouldNotAllowMocking(processor) ||
           interceptorCallback.shouldExecuteProcessor(componentIdentifier, event, parameters)) {
 
         return just(event).transform(processor);
       } else {
+        //skip
         Publisher<Event> next = just(event)
             .map(checkedFunction(request -> interceptorCallback.getResult(componentIdentifier, request, parameters)));
-        //TODO Remove this, we should not allow to intercept this kind of processors
-        if (processor instanceof InterceptableMessageProcessor) {
-          try {
-            InterceptableMessageProcessor interceptableMessageProcessor = (InterceptableMessageProcessor) processor;
-            Processor nextProcessor = interceptableMessageProcessor.getNext();
-            if (nextProcessor != null) {
-              next = nextProcessor.apply(next);
-            }
-          } catch (Exception e) {
-            throw new MuleRuntimeException(createStaticMessage("Error while getting next processor from interceptor"),
-                                           e);
-          }
-        }
         return next;
       }
     }));

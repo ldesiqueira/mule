@@ -14,8 +14,8 @@ public interface MessageProcessorInterceptorManager {
 
   boolean isInterceptionEnabled();
 
-  void setInterceptionCallback(MessageProcessorInterceptorCallback processorInterceptorCallback);
+  void addInterceptionHandler(InterceptionHandler interceptionHandler);
 
   //TODO allow multiple intereceptors
-  MessageProcessorInterceptorCallback retrieveInterceptorCallback();
+  InterceptionHandlerChain retrieveInterceptionHandlerChain();
 }
