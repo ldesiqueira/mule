@@ -7,9 +7,10 @@
 
 package org.mule.runtime.core.api.interception;
 
-import org.mule.runtime.api.dsl.config.ComponentIdentifier;
+import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.Event.Builder;
+import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 
 import java.util.Map;
 
@@ -19,8 +20,8 @@ import java.util.Map;
 public interface InterceptionHandler {
 
   //TODO change Event and Builder to other things (view of Event and Builder)
-  InterceptionCallbackResult before(ComponentIdentifier componentIdentifier, Event event, Builder eventBuilder, Map<String, Object> parameters, InterceptionCallback callback);
+  InterceptionCallbackResult before(ComponentIdentifier componentIdentifier, Event event, Builder eventBuilder, Map<String, Object> parameters, InterceptionCallback callback) throws MuleException;
 
 
-  default void after(Event event) {};
+  default void after(Event event) {} //throws MuleException {}
 }

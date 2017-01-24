@@ -7,10 +7,10 @@
 
 package org.mule.runtime.core.api.interception;
 
-import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.exception.MessagingException;
+import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 
 import java.util.Map;
 

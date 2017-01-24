@@ -8,12 +8,11 @@
 package org.mule.runtime.core.processor;
 
 import static java.lang.String.valueOf;
-import static org.mule.runtime.api.dsl.config.ComponentConfiguration.ANNOTATION_PARAMETERS;
-import static org.mule.runtime.api.dsl.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
+import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
+import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Flux.from;
 import static reactor.core.publisher.Flux.just;
-import org.mule.runtime.api.dsl.config.ComponentIdentifier;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
@@ -29,6 +28,7 @@ import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallbac
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.interception.ProcessorParameterResolver;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 
 import java.util.HashMap;
 import java.util.ListIterator;
@@ -121,29 +121,29 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
           AtomicBoolean stopInterception = new AtomicBoolean(false);
           ListIterator<InterceptionHandler> listIterator = interceptionHandlerChain.listIterator();
           AtomicReference<Event> eventLastInterception = new AtomicReference<>(request);
-
           while (listIterator.hasNext() && !stopInterception.get()) {
             InterceptionHandler interceptionHandler = listIterator.next();
 
-            interceptionHandler.before(getComponentIdentifier(processor), eventLastInterception.get(), Event.builder(eventLastInterception.get()),
+            interceptionHandler.before(getComponentIdentifier(processor), eventLastInterception.get(),
+                                       Event.builder(eventLastInterception.get()),
                                        resolvedParameters, new InterceptionCallback() {
 
-              @Override
-              public InterceptionCallbackResult skipProcessor(Event result) {
-                flux.set(flux.get().map(input -> result));
-                eventLastInterception.set(result);
-                stopInterception.set(true);
-                return null;
-              }
+                  @Override
+                  public InterceptionCallbackResult skipProcessor(Event result) {
+                    flux.set(flux.get().map(input -> result));
+                    eventLastInterception.set(result);
+                    stopInterception.set(true);
+                    return null;
+                  }
 
-              @Override
-              public InterceptionCallbackResult nextProcessor(Event newRequest) {
-                flux.set(flux.get().map(input -> newRequest));
-                eventLastInterception.set(newRequest);
-                return null;
-              }
+                  @Override
+                  public InterceptionCallbackResult nextProcessor(Event newRequest) {
+                    flux.set(flux.get().map(input -> newRequest));
+                    eventLastInterception.set(newRequest);
+                    return null;
+                  }
 
-            });
+                });
           }
 
           if (!stopInterception.get()) {
@@ -152,7 +152,9 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
 
           while (listIterator.hasPrevious()) {
             InterceptionHandler interceptionHandler = listIterator.previous();
-            flux.set(flux.get().doOnNext(interceptionHandler::after));
+            //TODO it should be able to throw a MuleException during the after process
+            flux.set(flux.get().doOnNext(resultEvent -> interceptionHandler.after(resultEvent)));
+            //flux.set(flux.get().doOnError(MessagingException.class,  exception -> interceptionHandler.after(exception.getEvent())));
           }
           return flux.get();
     }));

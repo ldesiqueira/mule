@@ -8,9 +8,15 @@
 package org.mule.test.integration.interception;
 
 import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mule.functional.functional.FlowAssert.verify;
 import static org.mule.runtime.api.dsl.DslConstants.CORE_NAMESPACE;
-import org.mule.runtime.api.dsl.config.ComponentIdentifier;
+import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
@@ -19,6 +25,8 @@ import org.mule.runtime.core.api.config.ConfigurationException;
 import org.mule.runtime.core.api.interception.InterceptionCallback;
 import org.mule.runtime.core.api.interception.InterceptionCallbackResult;
 import org.mule.runtime.core.api.interception.InterceptionHandler;
+import org.mule.runtime.core.exception.MessagingException;
+import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
 import org.mule.test.AbstractIntegrationTestCase;
 import org.mule.test.runner.RunnerDelegateTo;
 
@@ -28,6 +36,7 @@ import java.util.Map;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
 @RunnerDelegateTo(MockitoJUnitRunner.class)
@@ -133,6 +142,29 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE + " " + INTERCEPTED).withVariable(INPUT_MESSAGE, "mock").run().getMessage();
     verify(flow);
   }
+
+  @Test
+  public void interceptSetPayloadMessageProcessorThrowsExceptionFirstInterceptorOnBefore() throws Exception {
+    InterceptionHandler firstHandler = mock(InterceptionHandler.class);
+    when(firstHandler.before(any(ComponentIdentifier.class), any(Event.class), any(Event.Builder.class), any(Map.class), any(InterceptionCallback.class))).thenThrow(new MuleRuntimeException(createStaticMessage("Error")));
+    firstInterceptionHandlerHolder.setHandler(firstHandler);
+    InterceptionHandler secondHandler = mock(InterceptionHandler.class);
+    secondInterceptionHandlerHolder.setHandler(secondHandler);
+
+    String flow = "setPayloadFlow";
+    try {
+      flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE + " " + INTERCEPTED)
+          .withVariable(INPUT_MESSAGE, "mock").run().getMessage();
+      fail();
+    } catch (MessagingException e) {
+      // Nothing to do...
+    }
+
+    Mockito.verify(firstHandler, atLeastOnce()).before(any(ComponentIdentifier.class), any(Event.class), any(Event.Builder.class), any(Map.class), any(InterceptionCallback.class));
+    Mockito.verify(firstHandler, atLeastOnce()).after(any(Event.class));
+    Mockito.verify(secondHandler, atLeastOnce()).after(any(Event.class));
+  }
+
 
   //@Test
   //public void interceptSetPayloadOnInnerFlowInterception() throws Exception {
@@ -240,7 +272,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
 
     @Override
     public InterceptionCallbackResult before(ComponentIdentifier componentIdentifier, Event event, Event.Builder eventBuilder,
-                                             Map<String, Object> parameters, InterceptionCallback callback) {
+                                             Map<String, Object> parameters, InterceptionCallback callback) throws MuleException {
       return handler.before(componentIdentifier, event, eventBuilder, parameters, callback);
     }
 
