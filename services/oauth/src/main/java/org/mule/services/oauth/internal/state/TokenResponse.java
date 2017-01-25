@@ -6,6 +6,8 @@
  */
 package org.mule.services.oauth.internal.state;
 
+import static java.util.Collections.unmodifiableMap;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,7 +23,7 @@ public class TokenResponse {
   }
 
   public void setAccessToken(String accessToken) {
-    this.accessToken = accessToken;
+    this.accessToken = isEmpty(accessToken) ? null : accessToken;
   }
 
   public String getRefreshToken() {
@@ -29,7 +31,7 @@ public class TokenResponse {
   }
 
   public void setRefreshToken(String refreshToken) {
-    this.refreshToken = refreshToken;
+    this.refreshToken = isEmpty(refreshToken) ? null : refreshToken;
   }
 
   public String getExpiresIn() {
@@ -41,6 +43,15 @@ public class TokenResponse {
   }
 
   public Map<String, Object> getCustomResponseParameters() {
-    return customResponseParameters;
+    return unmodifiableMap(customResponseParameters);
   }
+
+  public void setCustomResponseParameters(Map<String, Object> customResponseParameters) {
+    this.customResponseParameters.putAll(customResponseParameters);
+  }
+
+  private boolean isEmpty(String value) {
+    return value == null || org.mule.runtime.core.util.StringUtils.isEmpty(value) || "null".equals(value);
+  }
+
 }

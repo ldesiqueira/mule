@@ -18,10 +18,11 @@ import org.mule.runtime.api.metadata.MediaType;
 import org.mule.runtime.api.metadata.TypedValue;
 import org.mule.runtime.core.api.el.ExpressionManager;
 import org.mule.runtime.core.util.IOUtils;
+import org.mule.runtime.core.util.MapUtils;
 import org.mule.runtime.core.util.StringUtils;
-import org.mule.runtime.extension.api.runtime.operation.ParameterResolver;
-import org.mule.runtime.extension.api.runtime.operation.Result.Builder;
+import org.mule.runtime.oauth.api.AbstractOAuthConfig;
 import org.mule.runtime.oauth.api.exception.TokenUrlResponseException;
+import org.mule.service.http.api.client.HttpClient;
 import org.mule.service.http.api.domain.ParameterMap;
 import org.mule.service.http.api.domain.entity.ByteArrayHttpEntity;
 import org.mule.service.http.api.domain.entity.InputStreamHttpEntity;
@@ -31,13 +32,17 @@ import org.mule.service.http.api.domain.message.response.HttpResponse;
 import org.mule.services.oauth.internal.state.ResourceOwnerOAuthContext;
 import org.mule.services.oauth.internal.state.TokenResponse;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 
@@ -47,15 +52,22 @@ public abstract class AbstractOAuthDancer {
 
   private final Function<String, Lock> lockProvider;
   private final Map<String, ResourceOwnerOAuthContext> tokensStore;
+  private final HttpClient httpClient;
+  private final ExpressionManager expressionManager;
 
-  protected AbstractOAuthDancer(Function<String, Lock> lockProvider, Map<String, ResourceOwnerOAuthContext> tokensStore) {
+  protected AbstractOAuthDancer(Function<String, Lock> lockProvider, Map<String, ResourceOwnerOAuthContext> tokensStore,
+                                HttpClient httpClient, ExpressionManager expressionManager) {
     this.lockProvider = lockProvider;
     this.tokensStore = tokensStore;
+    this.httpClient = httpClient;
+    this.expressionManager = expressionManager;
   }
+
+  protected abstract AbstractOAuthConfig getConfig();
 
   protected TokenResponse invokeTokenUrl(String tokenUrl, Map<String, String> tokenRequestFormToSend, String authorization,
                                          boolean retrieveRefreshToken, Charset encoding)
-      throws MuleException/* , TokenUrlResponseException */ {
+      throws MuleException, TokenUrlResponseException {
     try {
       final HttpRequestBuilder requestBuilder = HttpRequest.builder()
           .setUri(tokenUrl).setMethod("POST")
@@ -67,7 +79,7 @@ public abstract class AbstractOAuthDancer {
       }
 
       // TODO MULE-11272 Support doing non-blocking requests
-      final HttpResponse response = null;// client.send(requestBuilder.build(), TOKEN_REQUEST_TIMEOUT_MILLIS, true, null);
+      final HttpResponse response = httpClient.send(requestBuilder.build(), TOKEN_REQUEST_TIMEOUT_MILLIS, true, null);
 
       MediaType responseContentType =
           response.getHeaderValueIgnoreCase(CONTENT_TYPE) != null ? parse(response.getHeaderValueIgnoreCase(CONTENT_TYPE)) : ANY;
@@ -76,16 +88,10 @@ public abstract class AbstractOAuthDancer {
         headers.put(headerName, response.getHeaderValues(headerName));
       }
 
-      Builder responseBuilder = null;
-      // final Builder<Object, HttpResponseAttributes> responseBuilder =
-      // Result.<Object, HttpResponseAttributes>builder().mediaType(responseContentType)
-      // .attributes(new HttpResponseAttributes(response.getStatusCode(), response.getReasonPhrase(), headers));
-
-      final String readBody = IOUtils.toString(((InputStreamHttpEntity) response.getEntity()).getInputStream());
+      String readBody = IOUtils.toString(((InputStreamHttpEntity) response.getEntity()).getInputStream());
+      Object body = readBody;
       if (responseContentType.withoutParameters().matches(APPLICATION_X_WWW_FORM_URLENCODED)) {
-        responseBuilder.output(decodeString(readBody, responseContentType.getCharset().orElse(encoding)));
-      } else {
-        responseBuilder.output(readBody);
+        body = decodeString(readBody, responseContentType.getCharset().orElse(encoding));
       }
 
       if (response.getStatusCode() >= 400) {
@@ -94,41 +100,39 @@ public abstract class AbstractOAuthDancer {
 
       TokenResponse tokenResponse = new TokenResponse();
 
-      // tokenResponse.setAccessToken(resolveExpression(responseAccessToken, tokenUrlResponse));
-      // // tokenResponse.accessToken = isEmpty(tokenResponse.accessToken) ? null : tokenResponse.accessToken;
-      // // if (tokenResponse.accessToken == null) {
-      // // LOGGER.error("Could not extract access token from token URL. "
-      // // + "Expressions used to retrieve access token was " + responseAccessToken);
-      // // }
-      // if (retrieveRefreshToken) {
-      // tokenResponse.refreshToken = resolveExpression(responseRefreshToken, tokenUrlResponse);
-      // tokenResponse.refreshToken = isEmpty(tokenResponse.refreshToken) ? null : tokenResponse.refreshToken;
-      // }
-      // tokenResponse.expiresIn = resolveExpression(responseExpiresIn, tokenUrlResponse);
-      // if (!CollectionUtils.isEmpty(parameterExtractors)) {
-      // for (ParameterExtractor parameterExtractor : parameterExtractors) {
-      // tokenResponse.customResponseParameters.put(parameterExtractor.getParamName(),
-      // resolveExpression(parameterExtractor.getValue(), tokenUrlResponse));
-      // }
-      // }
+      tokenResponse
+          .setAccessToken(resolveExpression(getConfig().getResponseAccessTokenExpr(), body, headers, responseContentType));
+//      if (tokenResponse.getAccessToken() == null) {
+//        LOGGER.error("Could not extract access token from token URL. "
+//            + "Expressions used to retrieve access token was " + responseAccessToken);
+//      }
+      if (retrieveRefreshToken) {
+        tokenResponse
+            .setRefreshToken(resolveExpression(getConfig().getResponseRefreshTokenExpr(), body, headers, responseContentType));
+      }
+      tokenResponse.setExpiresIn(resolveExpression(getConfig().getResponseExpiresInExpr(), body, headers, responseContentType));
+      if (!MapUtils.isEmpty(getConfig().getCustomParamtersExprs())) {
+        Map<String, Object> customParams = new HashMap<>();
+        for (Entry<String, String> customParamExpr : getConfig().getCustomParamtersExprs().entrySet()) {
+          customParams.put(customParamExpr.getKey(),
+                           resolveExpression(customParamExpr.getValue(), body, headers, responseContentType));
+        }
+        tokenResponse.setCustomResponseParameters(customParams);
+      }
 
       return tokenResponse;
-      // } catch (IOException e) {
-      // throw new TokenUrlResponseException(tokenUrl, e);
-      // } catch (TimeoutException e) {
-      // throw new TokenUrlResponseException(tokenUrl, e);
-    } finally {
-
+    } catch (IOException e) {
+      throw new TokenUrlResponseException(tokenUrl, e);
+    } catch (TimeoutException e) {
+      throw new TokenUrlResponseException(tokenUrl, e);
     }
   }
 
-  private <T> T resolveExpression(ExpressionManager expressionMgr, ParameterResolver<T> expr,
-                                  String body, ParameterMap headers, MediaType responseContentType) {
+  private <T> T resolveExpression(String expr, Object body, ParameterMap headers, MediaType responseContentType) {
     if (expr == null) {
       return null;
-    } else if (!expr.getExpression().isPresent()
-        || !expressionMgr.isExpression(expr.getExpression().get())) {
-      return expr.resolve();
+    } else if (!expressionManager.isExpression(expr)) {
+      return (T) expr;
     } else {
       BindingContext resultContext = BindingContext.builder()
           .addBinding("payload",
@@ -141,7 +145,7 @@ public abstract class AbstractOAuthDancer {
                           .build(), DataType.fromType(DataType.class)))
           .build();
 
-      return (T) expressionMgr.evaluate(expr.getExpression().get(), resultContext).getValue();
+      return (T) expressionManager.evaluate(expr, resultContext).getValue();
     }
   }
 

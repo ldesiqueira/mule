@@ -6,7 +6,7 @@
  */
 package org.mule.runtime.oauth.api;
 
-public class ClientCredentialsConfig {
+public class ClientCredentialsConfig extends AbstractOAuthConfig {
 
   private final String clientId;
   private final String clientSecret;

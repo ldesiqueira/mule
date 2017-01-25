@@ -18,9 +18,11 @@ import static org.mule.services.oauth.internal.state.ResourceOwnerOAuthContext.D
 import static org.slf4j.LoggerFactory.getLogger;
 
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.core.api.el.ExpressionManager;
 import org.mule.runtime.oauth.api.ClientCredentialsConfig;
 import org.mule.runtime.oauth.api.OAuthDancer;
 import org.mule.runtime.oauth.api.exception.RequestAuthenticationException;
+import org.mule.service.http.api.client.HttpClient;
 import org.mule.services.oauth.internal.state.ResourceOwnerOAuthContext;
 import org.mule.services.oauth.internal.state.TokenResponse;
 
@@ -41,9 +43,15 @@ public class ClientCredentialsOAuthDancer extends AbstractOAuthDancer implements
   private ClientCredentialsConfig config;
 
   public ClientCredentialsOAuthDancer(ClientCredentialsConfig config, Function<String, Lock> lockProvider,
-                                      Map<String, ResourceOwnerOAuthContext> tokensStore) {
-    super(lockProvider, tokensStore);
+                                      Map<String, ResourceOwnerOAuthContext> tokensStore, HttpClient httpClient,
+                                      ExpressionManager expressionManager) {
+    super(lockProvider, tokensStore, httpClient, expressionManager);
     this.config = config;
+  }
+
+  @Override
+  public ClientCredentialsConfig getConfig() {
+    return config;
   }
 
   @Override

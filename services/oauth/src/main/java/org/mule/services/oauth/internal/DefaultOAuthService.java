@@ -6,11 +6,13 @@
  */
 package org.mule.services.oauth.internal;
 
+import org.mule.runtime.core.api.el.ExpressionManager;
 import org.mule.runtime.oauth.api.ClientCredentialsConfig;
 import org.mule.runtime.oauth.api.OAuthDancer;
 import org.mule.runtime.oauth.api.OAuthHttpListenersServersManager;
 import org.mule.runtime.oauth.api.OAuthService;
 import org.mule.service.http.api.HttpService;
+import org.mule.service.http.api.client.HttpClient;
 import org.mule.services.oauth.internal.state.ResourceOwnerOAuthContext;
 
 import java.util.Map;
@@ -34,8 +36,11 @@ public class DefaultOAuthService implements OAuthService {
   @Override
   public <T> OAuthDancer createClientCredentialsGrantTypeDancer(ClientCredentialsConfig config,
                                                                 Function<String, Lock> lockProvider,
-                                                                Map<String, T> tokensStore) {
-    return new ClientCredentialsOAuthDancer(config, lockProvider, (Map<String, ResourceOwnerOAuthContext>) tokensStore);
+                                                                Map<String, T> tokensStore,
+                                                                HttpClient httpClient,
+                                                                ExpressionManager expressionManager) {
+    return new ClientCredentialsOAuthDancer(config, lockProvider, (Map<String, ResourceOwnerOAuthContext>) tokensStore,
+                                            httpClient, expressionManager);
   }
 
   @Override

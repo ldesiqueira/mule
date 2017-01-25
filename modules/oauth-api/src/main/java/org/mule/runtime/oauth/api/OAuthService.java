@@ -7,6 +7,8 @@
 package org.mule.runtime.oauth.api;
 
 import org.mule.runtime.api.service.Service;
+import org.mule.runtime.core.api.el.ExpressionManager;
+import org.mule.service.http.api.client.HttpClient;
 
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
@@ -33,7 +35,8 @@ public interface OAuthService extends Service {
    * @return a client-credentials grant type dancer.
    */
   <T> OAuthDancer createClientCredentialsGrantTypeDancer(ClientCredentialsConfig config, Function<String, Lock> lockProvider,
-                                                         Map<String, T> tokensStore);
+                                                         Map<String, T> tokensStore, HttpClient httpClient,
+                                                         ExpressionManager expressionManager);
 
   /**
    * Creates an {@link OAuthDancer} for authorization code grant type. The dancer will use the given {@code lockProvider} and
