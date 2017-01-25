@@ -9,6 +9,8 @@ package org.mule.runtime.core.api.interception;
 
 import static java.util.Collections.unmodifiableList;
 
+import org.mule.runtime.api.interception.InterceptionHandler;
+
 import java.util.List;
 import java.util.ListIterator;
 
@@ -16,6 +18,7 @@ import java.util.ListIterator;
  * TODO should not be API
  */
 public class InterceptionHandlerChain {
+
   private List<InterceptionHandler> interceptionHandlers;
 
   public InterceptionHandlerChain(List<InterceptionHandler> interceptionHandlers) {

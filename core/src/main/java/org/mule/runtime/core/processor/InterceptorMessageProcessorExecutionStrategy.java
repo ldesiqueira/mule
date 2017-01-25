@@ -8,43 +8,48 @@
 package org.mule.runtime.core.processor;
 
 import static java.lang.String.valueOf;
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang.exception.ExceptionUtils.getRootCause;
 import static org.mule.runtime.core.api.rx.Exceptions.checkedFunction;
-import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_NAME;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
+import static reactor.core.publisher.Flux.error;
 import static reactor.core.publisher.Flux.from;
 import static reactor.core.publisher.Flux.just;
+
+import org.mule.runtime.api.component.ComponentIdentifier;
+import org.mule.runtime.api.component.ComponentLocation;
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.interception.InterceptionAction;
+import org.mule.runtime.api.interception.InterceptionHandler;
 import org.mule.runtime.api.meta.AnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.construct.FlowConstructAware;
+import org.mule.runtime.core.api.construct.MessageProcessorPathResolver;
 import org.mule.runtime.core.api.context.MuleContextAware;
-import org.mule.runtime.core.api.interception.InterceptionCallback;
-import org.mule.runtime.core.api.interception.InterceptionCallbackResult;
-import org.mule.runtime.core.api.interception.InterceptionHandler;
+import org.mule.runtime.core.api.interception.DefaultInterceptionEvent;
 import org.mule.runtime.core.api.interception.InterceptionHandlerChain;
-import org.mule.runtime.core.api.interception.MessageProcessorInterceptorCallback;
-import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 import org.mule.runtime.core.api.interception.ProcessorParameterResolver;
+import org.mule.runtime.core.api.processor.InterceptingMessageProcessor;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
+import org.mule.runtime.core.api.routing.SelectiveRouter;
 
 import java.util.HashMap;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import javax.xml.namespace.QName;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.publisher.Flux;
 
 /**
- * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link MessageProcessorInterceptorCallback interceptor callback}.
+ * Execution mediator for {@link Processor} that intercepts the processor execution with an {@link InterceptionHandlerChain
+ * interceptor callback chain}.
  *
  * @since 4.0
  */
@@ -79,13 +84,18 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
     if (isInterceptable(processor)) {
       logger.debug("Applying interceptor for Processor: '{}'", processor.getClass());
 
-      MessageProcessorInterceptorManager interceptorManager = muleContext.getMessageProcessorInterceptorManager();
-      InterceptionHandlerChain interceptionHandlerChain = interceptorManager.retrieveInterceptionHandlerChain();
+      ComponentIdentifier componentIdentifier = ((AnnotatedObject) processor).getIdentifier();
+      ComponentLocation componentLocation =
+          ((AnnotatedObject) processor).getLocation(((MessageProcessorPathResolver) flowConstruct).getProcessorPath(processor));
 
-      AnnotatedObject annotatedObject = (AnnotatedObject) processor;
-      Map<String, String> componentParameters = (Map<String, String>) annotatedObject.getAnnotation(ANNOTATION_PARAMETERS);
+      InterceptionHandlerChain interceptionHandlerChain =
+          new InterceptionHandlerChain(muleContext.getMessageProcessorInterceptorManager().retrieveInterceptionHandlerChain()
+              .stream().filter(h -> h.intercept(componentIdentifier, componentLocation))
+              .collect(toList()));
 
-      return intercept(publisher, interceptionHandlerChain, componentParameters, processor);
+      return configureInterception(publisher, interceptionHandlerChain,
+                                   (Map<String, String>) ((AnnotatedObject) processor).getAnnotation(ANNOTATION_PARAMETERS),
+                                   processor);
     }
 
     return processor.apply(publisher);
@@ -93,8 +103,9 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
 
   private Boolean isInterceptable(Processor processor) {
     if (processor instanceof AnnotatedObject) {
-      ComponentIdentifier componentIdentifier = getComponentIdentifier(processor);
-      if (componentIdentifier != null) {
+      ComponentLocation componentLocation =
+          ((AnnotatedObject) processor).getLocation(((MessageProcessorPathResolver) flowConstruct).getProcessorPath(processor));
+      if (componentLocation != null) {
         return true;
       } else {
         logger.warn("Processor '{}' is an '{}' but doesn't have a componentIdentifier", processor.getClass(),
@@ -109,55 +120,137 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
   /**
    * {@inheritDoc}
    */
-  private Publisher<Event> intercept(Publisher<Event> publisher, InterceptionHandlerChain interceptionHandlerChain,
-                                     Map<String, String> parameters,
-                                     Processor processor) {
+  private Publisher<Event> configureInterception(Publisher<Event> publisher, InterceptionHandlerChain interceptionHandlerChain,
+                                                 Map<String, String> parameters, Processor processor) {
 
-    return from(publisher)
-        .flatMap(checkedFunction(request -> {
-         AtomicReference<Flux<Event>> flux = new AtomicReference<>(just(request));
-         final Map<String, Object> resolvedParameters = resolveParameters(request, processor, parameters);
+    final InterceptionMappersProvider mappers =
+        new InterceptionMappersProvider(interceptionHandlerChain, processor,
+                                        checkedFunction(event -> resolveParameters(event, processor, parameters)));
 
-          AtomicBoolean stopInterception = new AtomicBoolean(false);
-          ListIterator<InterceptionHandler> listIterator = interceptionHandlerChain.listIterator();
-          AtomicReference<Event> eventLastInterception = new AtomicReference<>(request);
-          while (listIterator.hasNext() && !stopInterception.get()) {
-            InterceptionHandler interceptionHandler = listIterator.next();
+    return from(publisher).map(mappers.before()).transform(processor).map(mappers.after())
+        .onErrorResumeWith(mappers.afterError());
+  }
 
-            interceptionHandler.before(getComponentIdentifier(processor), eventLastInterception.get(),
-                                       Event.builder(eventLastInterception.get()),
-                                       resolvedParameters, new InterceptionCallback() {
+  private static class InterceptionMappersProvider {
 
-                  @Override
-                  public InterceptionCallbackResult skipProcessor(Event result) {
-                    flux.set(flux.get().map(input -> result));
-                    eventLastInterception.set(result);
-                    stopInterception.set(true);
-                    return null;
-                  }
+    private final ListIterator<InterceptionHandler> listIterator;
+    private final Processor processor;
+    private final Function<Event, Map<String, Object>> parameters;
 
-                  @Override
-                  public InterceptionCallbackResult nextProcessor(Event newRequest) {
-                    flux.set(flux.get().map(input -> newRequest));
-                    eventLastInterception.set(newRequest);
-                    return null;
-                  }
+    private DefaultInterceptionEvent eventInterception;
 
-                });
+    public InterceptionMappersProvider(InterceptionHandlerChain interceptionHandlerChain, Processor processor,
+                                       Function<Event, Map<String, Object>> parameters) {
+      this.listIterator = interceptionHandlerChain.listIterator();
+      this.processor = processor;
+      this.parameters = parameters;
+    }
+
+    public Function<Event, Event> before() {
+      return input -> {
+        eventInterception = new DefaultInterceptionEvent(input);
+        while (listIterator.hasNext()) {
+          InterceptionHandler interceptionHandler = listIterator.next();
+          final Map<String, Object> resolvedParameters = parameters.apply(eventInterception.getInterceptionResult());
+
+          try {
+            AtomicBoolean actionCalled = new AtomicBoolean(false);
+
+            interceptionHandler.before(resolvedParameters, eventInterception, new InterceptionAction() {
+
+              private boolean isSkippable() {
+                return !(processor instanceof InterceptingMessageProcessor || processor instanceof SelectiveRouter);
+              }
+
+              @Override
+              public void skip() {
+                if (!isSkippable()) {
+                  throw new IllegalArgumentException("skip() may not be called for implementations of "
+                      + InterceptingMessageProcessor.class.getName() + " or " + SelectiveRouter.class.getName());
+                }
+                actionCalled.set(true);
+                throw new InterceptionSkippedException();
+              }
+
+              @Override
+              public void proceed() {
+                actionCalled.set(true);
+              }
+            });
+
+            if (!actionCalled.get()) {
+              throw new NoActionCalledException(interceptionHandler);
+            }
+          } finally {
+            eventInterception.resolve();
           }
+        }
+        return eventInterception.getInterceptionResult();
+      };
+    }
 
-          if (!stopInterception.get()) {
-            flux.set(flux.get().transform(processor));
+    public Function<Event, Event> after() {
+      return output -> {
+        final DefaultInterceptionEvent outputInterception = new DefaultInterceptionEvent(output);
+        while (listIterator.hasPrevious()) {
+          InterceptionHandler interceptionHandler = listIterator.previous();
+          try {
+            interceptionHandler.after(outputInterception);
+          } catch (Throwable t) {
+            throw new FailedInAfterException(t);
           }
+        }
+        return output;
+      };
+    }
 
-          while (listIterator.hasPrevious()) {
-            InterceptionHandler interceptionHandler = listIterator.previous();
-            //TODO it should be able to throw a MuleException during the after process
-            flux.set(flux.get().doOnNext(resultEvent -> interceptionHandler.after(resultEvent)));
-            //flux.set(flux.get().doOnError(MessagingException.class,  exception -> interceptionHandler.after(exception.getEvent())));
+    public Function<? super Throwable, ? extends Publisher<? extends Event>> afterError() {
+      return error -> {
+        if (error.getCause() instanceof FailedInAfterException) {
+          return error(error);
+        }
+
+        while (listIterator.hasPrevious()) {
+          InterceptionHandler interceptionHandler = listIterator.previous();
+          try {
+            interceptionHandler.after(eventInterception);
+          } catch (Throwable t) {
+            return error(new FailedInAfterException(t));
           }
-          return flux.get();
-    }));
+        }
+        if (getRootCause(error) instanceof InterceptionSkippedException) {
+          return just(eventInterception.getInterceptionResult());
+        } else {
+          return error(error);
+        }
+      };
+    }
+
+    private class InterceptionSkippedException extends RuntimeException {
+
+      private static final long serialVersionUID = 2465037950856680323L;
+
+    }
+
+    private class NoActionCalledException extends RuntimeException {
+
+      public NoActionCalledException(InterceptionHandler interceptionHandler) {
+        super("No method called on 'action' parameter in before method of " + interceptionHandler.toString());
+      }
+
+      private static final long serialVersionUID = 4896210944694903668L;
+
+    }
+
+    private class FailedInAfterException extends RuntimeException {
+
+      private static final long serialVersionUID = -4550278432332329624L;
+
+      public FailedInAfterException(Throwable cause) {
+        super(cause);
+      }
+    }
+
   }
 
   private Map<String, Object> resolveParameters(Event event, Processor processor, Map<String, String> parameters)
@@ -180,10 +273,4 @@ public class InterceptorMessageProcessorExecutionStrategy implements MessageProc
     }
     return resolvedParameters;
   }
-
-  protected ComponentIdentifier getComponentIdentifier(Processor processor) {
-    AnnotatedObject annotatedObject = (AnnotatedObject) processor;
-    return (ComponentIdentifier) annotatedObject.getAnnotation(ANNOTATION_NAME);
-  }
-
 }

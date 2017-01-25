@@ -7,9 +7,10 @@
 
 package org.mule.runtime.core.processor.interceptor;
 
+import static java.util.Collections.unmodifiableList;
 import static org.mule.runtime.api.util.Preconditions.checkNotNull;
-import org.mule.runtime.core.api.interception.InterceptionHandler;
-import org.mule.runtime.core.api.interception.InterceptionHandlerChain;
+
+import org.mule.runtime.api.interception.InterceptionHandler;
 import org.mule.runtime.core.api.interception.MessageProcessorInterceptorManager;
 
 import java.util.ArrayList;
@@ -44,7 +45,7 @@ public class DefaultMessageProcessorInterceptorManager implements MessageProcess
    * {@inheritDoc}
    */
   @Override
-  public InterceptionHandlerChain retrieveInterceptionHandlerChain() {
-    return new InterceptionHandlerChain(interceptionHandlers);
+  public List<InterceptionHandler> retrieveInterceptionHandlerChain() {
+    return unmodifiableList(interceptionHandlers);
   }
 }

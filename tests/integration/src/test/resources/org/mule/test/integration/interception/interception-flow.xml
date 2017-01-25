@@ -1,30 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      xmlns:file="http://www.mulesoft.org/schema/mule/file"
       xmlns:test="http://www.mulesoft.org/schema/mule/test"
       xsi:schemaLocation="
                http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-               http://www.mulesoft.org/schema/mule/test http://www.mulesoft.org/schema/mule/test/current/mule-test.xsd
-               http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
-
-    <flow name="operationProcessorFlow">
-        <file:read path="#[source]" />
-        <test:assert expression="#[payload == expectedMessage]"/>
-    </flow>
+               http://www.mulesoft.org/schema/mule/test http://www.mulesoft.org/schema/mule/test/current/mule-test.xsd">
 
     <flow name="setPayloadFlow">
         <set-payload value="#[inputMessage]"/>
-        <test:assert expression="#[payload == expectedMessage]"/>
+    </flow>
+
+    <flow name="failingProcessorFlow">
+        <custom-processor class="org.mule.test.integration.interception.MessageProcessorInterceptionFlowTestCase$FailingProcessor"/>
+    </flow>
+
+    <flow name="countingProcessorFlow">
+        <custom-processor class="org.mule.test.integration.interception.MessageProcessorInterceptionFlowTestCase$CountingProcessor"/>
+    </flow>
+
+    <flow name="internalProcessorFlow">
+        <custom-processor class="org.mule.test.integration.interception.MessageProcessorInterceptionFlowTestCase$InternalProcessor"/>
     </flow>
 
     <flow name="flowWithInnerFlow">
-        <set-payload value="zaraza"/>
         <flow-ref name="innerFlow"/>
-        <test:assert expression="#[payload == expectedMessage]"/>
     </flow>
     <flow name="innerFlow">
-        <set-payload value="another"/>
+        <set-payload value="#[inputMessage]"/>
     </flow>
 
+    <flow name="routerFlow">
+        <choice>
+            <when expression="inputMessage != null">
+                <set-payload value="#[inputMessage]"/>
+            </when>
+            <otherwise>
+                <set-payload value=""/>
+            </otherwise>
+        </choice>
+    </flow>
+
+    <flow name="interceptingProcessorFlow">
+        <splitter expression="#[payload.fruit]"/>
+        <set-payload value="#[inputMessage]"/>
+    </flow>
+    
+    <flow name="pollingFlow" initialState="stopped">
+        <poll frequency="100">
+            <set-payload value="#[inputMessage]"/>
+        </poll>
+        <custom-processor class="org.mule.test.integration.interception.MessageProcessorInterceptionFlowTestCase$InternalProcessor"/>
+    </flow>
+    
 </mule>

@@ -7,54 +7,59 @@
 
 package org.mule.test.integration.interception;
 
+import static java.util.Collections.singletonList;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mule.functional.functional.FlowAssert.verify;
-import static org.mule.runtime.api.dsl.DslConstants.CORE_NAMESPACE;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mule.runtime.api.i18n.I18nMessageFactory.createStaticMessage;
+
+import org.mule.runtime.api.component.ComponentIdentifier;
+import org.mule.runtime.api.component.ComponentLocation;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.interception.InterceptionAction;
+import org.mule.runtime.api.interception.InterceptionEvent;
+import org.mule.runtime.api.interception.InterceptionEventResult;
+import org.mule.runtime.api.interception.InterceptionHandler;
 import org.mule.runtime.api.message.Message;
+import org.mule.runtime.api.meta.AnnotatedObject;
+import org.mule.runtime.core.AbstractAnnotatedObject;
+import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.config.ConfigurationBuilder;
 import org.mule.runtime.core.api.config.ConfigurationException;
-import org.mule.runtime.core.api.interception.InterceptionCallback;
-import org.mule.runtime.core.api.interception.InterceptionCallbackResult;
-import org.mule.runtime.core.api.interception.InterceptionHandler;
+import org.mule.runtime.core.api.message.InternalMessage;
+import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.source.MessageSource;
+import org.mule.runtime.core.construct.Flow;
 import org.mule.runtime.core.exception.MessagingException;
-import org.mule.runtime.dsl.api.component.config.ComponentIdentifier;
+import org.mule.runtime.core.source.polling.PollingMessageSource;
+import org.mule.tck.probe.JUnitLambdaProbe;
+import org.mule.tck.probe.PollingProber;
 import org.mule.test.AbstractIntegrationTestCase;
-import org.mule.test.runner.RunnerDelegateTo;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.mockito.Mockito;
-import org.mockito.runners.MockitoJUnitRunner;
 
-@RunnerDelegateTo(MockitoJUnitRunner.class)
 public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegrationTestCase {
 
-  public static final String INTERCEPTED = "intercepted";
-  public static final String EXPECTED_INTERCEPTED_MESSAGE = TEST_MESSAGE + " " + INTERCEPTED;
-  public static final String INPUT_MESSAGE = "inputMessage";
-  public static final String EXPECTED_MESSAGE = "expectedMessage";
-
-  private ComponentIdentifier loggerComponentIdentifier =
-      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("logger").build();
-  private ComponentIdentifier setPayloadComponentIdentifier =
-      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("set-payload").build();
-  private ComponentIdentifier fileReadComponentIdentifier =
-      new ComponentIdentifier.Builder().withNamespace("file").withName("read").build();
-  private ComponentIdentifier customInterceptorComponentIdentifier =
-      new ComponentIdentifier.Builder().withNamespace(CORE_NAMESPACE).withName("custom-interceptor").build();
+  private static final String INTERCEPTED = "intercepted";
+  private static final String EXPECTED_INTERCEPTED_MESSAGE = TEST_MESSAGE + " " + INTERCEPTED;
+  private static final String INPUT_MESSAGE = "inputMessage";
 
   private InterceptionHandlerHolder firstInterceptionHandlerHolder = new InterceptionHandlerHolder();
   private InterceptionHandlerHolder secondInterceptionHandlerHolder = new InterceptionHandlerHolder();
@@ -85,211 +90,463 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     super.addBuilders(builders);
   }
 
-  @Test
-  public void interceptSetPayloadMessageProcessor() throws Exception {
-    InterceptionHandler handler = (componentIdentifier, event, eventBuilder, parameters, callback) -> callback.skipProcessor(eventBuilder.message(getInterceptedMessage(TEST_MESSAGE)).build());
-    firstInterceptionHandlerHolder.setHandler(handler);
-    String flow = "setPayloadFlow";
-    flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE).withVariable(INPUT_MESSAGE, "mock").run().getMessage();
-    verify(flow);
+  @Before
+  public void before() {
+    CountingProcessor.count.set(0);
   }
 
   @Test
-  public void doNotInterceptSetPayloadMessageProcessor() throws Exception {
-    InterceptionHandler handler = (componentIdentifier, event, eventBuilder, parameters, callback) -> callback.nextProcessor(event);
+  public void doNotIntercept() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        return false;
+      }
+    };
     firstInterceptionHandlerHolder.setHandler(handler);
-    secondInterceptionHandlerHolder.setHandler(new NoOpInterceptionHandler());
-    String flow = "setPayloadFlow";
-    flowRunner(flow).withVariable(EXPECTED_MESSAGE, TEST_MESSAGE).withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
-    verify(flow);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    final InternalMessage message = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(TEST_MESSAGE));
   }
 
   @Test
-  public void interceptSetPayloadMessageProcessorSkipOnFirstInterceptor() throws Exception {
-    InterceptionHandler handler = (componentIdentifier, event, eventBuilder, parameters, callback) -> callback.skipProcessor(eventBuilder.message(getInterceptedMessage(TEST_MESSAGE)).build());
-    firstInterceptionHandlerHolder.setHandler(handler);
-    secondInterceptionHandlerHolder.setHandler((componentIdentifier, event, eventBuilder, parameters, callback) -> {
-      fail("Should not be executed");
-      return null;
+  public void interceptSkipOnFirstInterceptor() throws Exception {
+    firstInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        event.message(getInterceptedMessage(TEST_MESSAGE));
+        action.skip();
+      }
+    });
+    secondInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        fail("Should not be executed");
+      }
     });
 
-    String flow = "setPayloadFlow";
-    flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE).withVariable(INPUT_MESSAGE, "mock").run().getMessage();
-    verify(flow);
+    final InternalMessage message = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(EXPECTED_INTERCEPTED_MESSAGE));
   }
 
   @Test
-  public void interceptSetPayloadMessageProcessorSkipOnSecondInterceptor() throws Exception {
-    InterceptionHandler handler = (componentIdentifier, event, eventBuilder, parameters, callback) ->
-        callback.nextProcessor(eventBuilder.message(getInterceptedMessage(event.getVariable(INPUT_MESSAGE).getValue())).build());
-    firstInterceptionHandlerHolder.setHandler(handler);
-    secondInterceptionHandlerHolder.setHandler((componentIdentifier, event, eventBuilder, parameters, callback) -> callback.skipProcessor(event));
+  public void interceptSkipOnSecondInterceptor() throws Exception {
+    firstInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
 
-    String flow = "setPayloadFlow";
-    flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE).withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
-    verify(flow);
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        event.message(getInterceptedMessage(event.getVariable(INPUT_MESSAGE).getValue()));
+        action.proceed();
+      }
+    });
+    secondInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        action.skip();
+      }
+    });
+
+    final InternalMessage message = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(EXPECTED_INTERCEPTED_MESSAGE));
   }
 
   @Test
-  public void interceptSetPayloadMessageProcessorBothContinue() throws Exception {
-    InterceptionHandler handler = (componentIdentifier, event, eventBuilder, parameters, callback) ->
-        callback.nextProcessor(eventBuilder.addVariable(INPUT_MESSAGE, TEST_MESSAGE + " " + INTERCEPTED).build());
-    firstInterceptionHandlerHolder.setHandler(handler);
-    secondInterceptionHandlerHolder.setHandler((componentIdentifier, event, eventBuilder, parameters, callback) ->
-        callback.nextProcessor(eventBuilder.addVariable(INPUT_MESSAGE, event.getVariable(INPUT_MESSAGE).getValue() + " " + INTERCEPTED).build()));
+  public void interceptBothChangeEventAndContinue() throws Exception {
+    firstInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
 
-    String flow = "setPayloadFlow";
-    flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE + " " + INTERCEPTED).withVariable(INPUT_MESSAGE, "mock").run().getMessage();
-    verify(flow);
+      @Override
+      public void before(java.util.Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        event.addVariable(INPUT_MESSAGE, TEST_MESSAGE + " " + INTERCEPTED);
+        action.proceed();
+      }
+    });
+    secondInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        event.addVariable(INPUT_MESSAGE, event.getVariable(INPUT_MESSAGE).getValue() + " " + INTERCEPTED);
+        action.proceed();
+      }
+    });
+
+    final InternalMessage message = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(EXPECTED_INTERCEPTED_MESSAGE + " " + INTERCEPTED));
   }
 
   @Test
-  public void interceptSetPayloadMessageProcessorThrowsExceptionFirstInterceptorOnBefore() throws Exception {
-    InterceptionHandler firstHandler = mock(InterceptionHandler.class);
-    when(firstHandler.before(any(ComponentIdentifier.class), any(Event.class), any(Event.Builder.class), any(Map.class), any(InterceptionCallback.class))).thenThrow(new MuleRuntimeException(createStaticMessage("Error")));
+  public void interceptChangeInEventReflectedInHandlerParameters() throws Exception {
+    firstInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(java.util.Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        assertThat(parameters.get("value"), is("mock"));
+        event.addVariable(INPUT_MESSAGE, "changed");
+        action.proceed();
+      }
+    });
+    secondInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        assertThat(parameters.get("value"), is("changed"));
+        event.addVariable(INPUT_MESSAGE, TEST_MESSAGE);
+        action.proceed();
+      }
+    });
+
+    final InternalMessage message = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(TEST_MESSAGE));
+  }
+
+  @Test
+  public void interceptFirstInterceptorThrowsExceptionOnBefore() throws Exception {
+    InterceptionHandler firstHandler = spy(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        throw new MuleRuntimeException(createStaticMessage("Error"));
+      }
+    });
     firstInterceptionHandlerHolder.setHandler(firstHandler);
-    InterceptionHandler secondHandler = mock(InterceptionHandler.class);
+    InterceptionHandler secondHandler = spy(new NoOpInterceptionHandler());
     secondInterceptionHandlerHolder.setHandler(secondHandler);
 
-    String flow = "setPayloadFlow";
-    try {
-      flowRunner(flow).withVariable(EXPECTED_MESSAGE, EXPECTED_INTERCEPTED_MESSAGE + " " + INTERCEPTED)
-          .withVariable(INPUT_MESSAGE, "mock").run().getMessage();
-      fail();
-    } catch (MessagingException e) {
-      // Nothing to do...
-    }
+    flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").runExpectingException();
 
-    Mockito.verify(firstHandler, atLeastOnce()).before(any(ComponentIdentifier.class), any(Event.class), any(Event.Builder.class), any(Map.class), any(InterceptionCallback.class));
-    Mockito.verify(firstHandler, atLeastOnce()).after(any(Event.class));
-    Mockito.verify(secondHandler, atLeastOnce()).after(any(Event.class));
+    verify(firstHandler).before(any(Map.class), any(InterceptionEvent.class), any(InterceptionAction.class));
+    verify(firstHandler).after(any(InterceptionEvent.class));
+    verify(secondHandler, never()).after(any(InterceptionEvent.class));
   }
 
+  @Test
+  public void interceptFirstInterceptorThrowsExceptionOnAfter() throws Exception {
+    final MuleRuntimeException thrownException = new MuleRuntimeException(createStaticMessage("Error"));
 
-  //@Test
-  //public void interceptSetPayloadOnInnerFlowInterception() throws Exception {
-  //  when(interceptionHandler.before(any(ComponentIdentifier.class), any(Event.class), anyMap()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(not(equalTo(setPayloadComponentIdentifier))), any(Event.class),
-  //                                                  anyMap())).thenReturn(true);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(equalTo(setPayloadComponentIdentifier)), any(Event.class),
-  //                                                  anyMap())).thenAnswer(invocation -> {
-  //                                                    Map<String, Object> parameters =
-  //                                                        (Map<String, Object>) invocation.getArguments()[2];
-  //                                                    return !parameters.getOrDefault("value", "").equals("another");
-  //                                                  });
-  //  when(interceptionHandler.getResult(argThat(equalTo(setPayloadComponentIdentifier)), any(Event.class), anyMap()))
-  //      .then(getInterceptedMessage());
-  //  when(interceptionHandler.after(any(ComponentIdentifier.class), any(Event.class), anyMap(), any()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //
-  //  String flow = "flowWithInnerFlow";
-  //  flowRunner(flow).withVariable("expectedMessage", "zaraza " + INTERCEPTED).run().getMessage();
-  //  verify(flow);
-  //
-  //  verifyInterceptor(true);
-  //}
-  //
-  //@Test
-  //public void interceptOperationMessageProcessor() throws Exception {
-  //  final File root = temporaryFolder.getRoot();
-  //
-  //  when(interceptionHandler.before(argThat(not(equalTo(fileReadComponentIdentifier))), any(Event.class), anyMap()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //  when(interceptionHandler.before(argThat(equalTo(fileReadComponentIdentifier)), any(Event.class),
-  //                                  (Map<String, Object>) argThat(hasEntry("path", (Object) root.getAbsolutePath()))))
-  //                                      .then(invocation -> invocation.getArguments()[1]);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(not(equalTo(fileReadComponentIdentifier))), any(Event.class),
-  //                                                  anyMap())).thenReturn(true);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(equalTo(fileReadComponentIdentifier)), any(Event.class), anyMap()))
-  //      .thenReturn(false);
-  //  when(interceptionHandler.getResult(argThat(equalTo(fileReadComponentIdentifier)), any(Event.class), anyMap()))
-  //      .then(getInterceptedMessage());
-  //  when(interceptionHandler.after(any(ComponentIdentifier.class), any(Event.class), anyMap(), any()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //
-  //  String flow = "operationProcessorFlow";
-  //  flowRunner(flow).withVariable("expectedMessage", EXPECTED_INTERCEPTED_MESSAGE)
-  //      .withVariable("source", root).withPayload(TEST_MESSAGE).run().getMessage();
-  //  verify(flow);
-  //  verifyInterceptor(true);
-  //}
-  //
-  //@Test
-  //public void interceptCustomInterceptorMessageProcessor() throws Exception {
-  //  when(interceptionHandler.before(any(ComponentIdentifier.class), any(Event.class), anyMap()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(not(equalTo(customInterceptorComponentIdentifier))),
-  //                                                  any(Event.class), anyMap())).thenReturn(true);
-  //  when(interceptionHandler.shouldExecuteProcessor(argThat(equalTo(customInterceptorComponentIdentifier)), any(Event.class),
-  //                                                  anyMap())).thenReturn(false);
-  //  when(interceptionHandler.getResult(argThat(equalTo(customInterceptorComponentIdentifier)), any(Event.class), anyMap()))
-  //      .then(getInterceptedMessage());
-  //  when(interceptionHandler.after(any(ComponentIdentifier.class), any(Event.class), anyMap(), any()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //
-  //  String flow = "customInterceptorProcessorFlow";
-  //  flowRunner(flow).withVariable("expectedMessage", EXPECTED_INTERCEPTED_MESSAGE).withPayload(TEST_MESSAGE).run().getMessage();
-  //  verify(flow);
-  //  verifyInterceptor(true);
-  //}
-  //
-  //@Test
-  //public void shouldExecuteCustomInterceptorMessageProcessor() throws Exception {
-  //  when(interceptionHandler.before(any(ComponentIdentifier.class), any(Event.class), anyMap()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //  when(interceptionHandler.shouldExecuteProcessor(any(ComponentIdentifier.class), any(Event.class), anyMap()))
-  //      .thenReturn(true);
-  //  when(interceptionHandler.after(any(ComponentIdentifier.class), any(Event.class), anyMap(), any()))
-  //      .then(invocation -> invocation.getArguments()[1]);
-  //
-  //  String flow = "customInterceptorNotInvokedProcessorFlow";
-  //  flowRunner(flow).withVariable("expectedMessage", TEST_MESSAGE + "!").withPayload(TEST_MESSAGE).run().getMessage();
-  //  verify(flow);
-  //  verifyInterceptor(false);
-  //}
+    InterceptionHandler firstHandler = spy(new InterceptionHandler() {
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        throw thrownException;
+      }
+    });
+    firstInterceptionHandlerHolder.setHandler(firstHandler);
+    InterceptionHandler secondHandler = spy(new NoOpInterceptionHandler());
+    secondInterceptionHandlerHolder.setHandler(secondHandler);
+
+    final MessagingException exception = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").runExpectingException();
+    assertThat(exception.getCause().getCause(), sameInstance(thrownException));
+  }
+
+  @Test
+  public void interceptSecondInterceptorThrowsExceptionOnAfter() throws Exception {
+    final MuleRuntimeException thrownException = new MuleRuntimeException(createStaticMessage("Error"));
+
+    InterceptionHandler firstHandler = spy(new NoOpInterceptionHandler());
+    firstInterceptionHandlerHolder.setHandler(firstHandler);
+    InterceptionHandler secondHandler = spy(new InterceptionHandler() {
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        throw thrownException;
+      }
+    });
+    secondInterceptionHandlerHolder.setHandler(secondHandler);
+
+    final MessagingException exception = flowRunner("setPayloadFlow").withVariable(INPUT_MESSAGE, "mock").runExpectingException();
+    assertThat(exception.getCause().getCause(), sameInstance(thrownException));
+
+    verify(firstHandler, never()).after(any(InterceptionEvent.class));
+  }
+
+  @Test
+  public void interceptedProcessorCalledJustOnce() throws Exception {
+    flowRunner("countingProcessorFlow").run();
+
+    assertThat(CountingProcessor.count.get(), is(1));
+  }
+
+  @Test
+  public void internalProcessorNotIntercepted() throws Exception {
+    InterceptionHandler firstHandler = spy(new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        fail("Internal Processors must not be intercepted");
+        return false;
+      }
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        fail("Internal Processors must not be intercepted");
+      }
+    });
+    firstInterceptionHandlerHolder.setHandler(firstHandler);
+    InterceptionHandler secondHandler = spy(new NoOpInterceptionHandler());
+    secondInterceptionHandlerHolder.setHandler(secondHandler);
+
+    final InternalMessage message = flowRunner("internalProcessorFlow").run().getMessage();
+    assertThat(message.getPayload().getValue(), is(TEST_MESSAGE));
+  }
+
+  @Test
+  public void dynamicallyCreatedProcessorNotIntercepted() throws Exception {
+    final Flow flow = new Flow("dynamicFlow", muleContext);
+    flow.setMessageProcessors(singletonList(event -> event));
+    muleContext.getRegistry().registerFlowConstruct(flow);
+
+    InterceptionHandler firstHandler = spy(new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        fail("Internal Processors must not be intercepted");
+        return false;
+      }
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        fail("Internal Processors must not be intercepted");
+      }
+    });
+    firstInterceptionHandlerHolder.setHandler(firstHandler);
+    InterceptionHandler secondHandler = spy(new NoOpInterceptionHandler());
+    secondInterceptionHandlerHolder.setHandler(secondHandler);
+
+    final InternalMessage message = flowRunner("dynamicFlow").run().getMessage();
+  }
+
+  @Test
+  public void routerIntercepted() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        return "choice".equals(identifier.getName());
+      }
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        assertThat(event.getMessage().getPayload().getValue(), equalTo(TEST_MESSAGE));
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    final InternalMessage message = flowRunner("routerFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(TEST_MESSAGE));
+  }
+
+  @Test
+  public void routerSkipNotAllowed() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        return "choice".equals(identifier.getName());
+      }
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        // assertThat(action.isSkippable(), is(false));
+        action.skip();
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    flowRunner("routerFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).runExpectingException();
+  }
+
+  @Test
+  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  public void flowRefIntercepted() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        return "flow-ref".equals(identifier.getName());
+      }
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        assertThat(event.getMessage().getPayload().getValue(), equalTo(TEST_MESSAGE));
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    final InternalMessage message = flowRunner("flowWithInnerFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(TEST_MESSAGE));
+  }
+
+  @Test
+  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  public void flowRefSkipNotAllowed() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        return "flow-ref".equals(identifier.getName());
+      }
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        action.skip();
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    flowRunner("flowWithInnerFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).runExpectingException();
+  }
+
+  @Test
+  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  public void interceptiongProcessorIntercepted() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        // TODO ComponentIdentifier not being set for the splitter
+        try {
+          return identifier.getName() == null;
+        } catch (NullPointerException e) {
+          return true;
+        }
+      }
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        assertThat(event.getMessage().getPayload().getValue(), equalTo(TEST_MESSAGE));
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    final InternalMessage message =
+        flowRunner("interceptingProcessorFlow").withPayload(TEST_MESSAGE).run().getMessage();
+    assertThat(message.getPayload().getValue(), equalTo(TEST_MESSAGE));
+  }
+
+  @Test
+  public void interceptiongProcessorSkipNotAllowed() throws Exception {
+    InterceptionHandler handler = new InterceptionHandler() {
+
+      @Override
+      public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+        // TODO ComponentIdentifier not being set for the splitter
+        try {
+          return identifier.getName() == null;
+        } catch (NullPointerException e) {
+          return true;
+        }
+      }
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        action.skip();
+      }
+    };
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+    flowRunner("interceptingProcessorFlow").withVariable(INPUT_MESSAGE, TEST_MESSAGE).runExpectingException();
+  }
+
+  @Test
+  @Ignore("Interception is not being configured for Processor inside a poll")
+  public void pollingSourceIntercepted() throws Exception {
+    InterceptionHandler handler = spy(new InterceptionHandler() {
+
+      @Override
+      public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+        event.addVariable(INPUT_MESSAGE, TEST_MESSAGE);
+      }
+
+      @Override
+      public void after(InterceptionEventResult event) {
+        assertThat(event.getMessage().getPayload().getValue(), equalTo(TEST_MESSAGE));
+      }
+    });
+    firstInterceptionHandlerHolder.setHandler(handler);
+    secondInterceptionHandlerHolder.setHandler(handler);
+
+    Flow flow = (Flow) (muleContext.getRegistry().lookupFlowConstruct("pollingFlow"));
+    flow.start();
+    try {
+      MessageSource flowSource = flow.getMessageSource();
+      if (flowSource instanceof PollingMessageSource) {
+        ((PollingMessageSource) flowSource).performPoll();
+      }
+
+      new PollingProber().check(new JUnitLambdaProbe(() -> {
+        verify(handler).before(any(Map.class), any(InterceptionEvent.class), any(InterceptionAction.class));
+        verify(handler).after(any(InterceptionEventResult.class));
+        return true;
+      }));
+    } finally {
+      flow.stop();
+    }
+  }
 
   private Message getInterceptedMessage(Object value) {
     return Message.builder().payload(value + " " + INTERCEPTED).build();
   }
 
-  //private void verifyInterceptor(boolean intercepted) throws MuleException {
-  //  Mockito.verify(interceptionHandler, atLeast(1)).before(any(ComponentIdentifier.class), any(Event.class), anyMap());
-  //  Mockito.verify(interceptionHandler, atLeast(1)).shouldExecuteProcessor(any(ComponentIdentifier.class), any(Event.class),
-  //                                                                         anyMap());
-  //  Mockito.verify(interceptionHandler, atMost(intercepted ? 1 : 0)).getResult(any(ComponentIdentifier.class), any(Event.class),
-  //                                                                             anyMap());
-  //  Mockito.verify(interceptionHandler, atLeast(1)).after(any(ComponentIdentifier.class), any(Event.class), anyMap(), any());
-  //}
-
   private class InterceptionHandlerHolder implements InterceptionHandler {
 
-    private InterceptionHandler handler;
+    private InterceptionHandler handler = new NoOpInterceptionHandler();
 
     public void setHandler(InterceptionHandler handler) {
       this.handler = handler;
     }
 
     @Override
-    public InterceptionCallbackResult before(ComponentIdentifier componentIdentifier, Event event, Event.Builder eventBuilder,
-                                             Map<String, Object> parameters, InterceptionCallback callback) throws MuleException {
-      return handler.before(componentIdentifier, event, eventBuilder, parameters, callback);
+    public boolean intercept(ComponentIdentifier identifier, ComponentLocation location) {
+      return handler.intercept(identifier, location);
     }
 
     @Override
-    public void after(Event event) {
+    public void before(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction callback) {
+      handler.before(parameters, event, callback);
+    }
+
+    @Override
+    public void after(InterceptionEventResult event) {
       handler.after(event);
     }
 
   }
 
-
   private class NoOpInterceptionHandler implements InterceptionHandler {
 
+  }
+
+  public static class FailingProcessor extends AbstractAnnotatedObject implements Processor {
+
     @Override
-    public InterceptionCallbackResult before(ComponentIdentifier componentIdentifier, Event event, Event.Builder eventBuilder,
-                                             Map<String, Object> parameters, InterceptionCallback callback) {
-      return null;
+    public Event process(Event event) throws MuleException {
+      throw new DefaultMuleException("Expected");
     }
   }
+
+  public static class CountingProcessor extends AbstractAnnotatedObject implements Processor {
+
+    public static AtomicInteger count = new AtomicInteger(0);
+
+    @Override
+    public Event process(Event event) throws MuleException {
+      count.incrementAndGet();
+      return event;
+    }
+  }
+
+  /**
+   * What makes this internal is that this is not an {@link AnnotatedObject}.
+   */
+  public static class InternalProcessor implements Processor {
+
+    @Override
+    public Event process(Event event) throws MuleException {
+      return Event.builder(event).message(Message.builder(event.getMessage()).payload(TEST_MESSAGE).build()).build();
+    }
+  }
+
 }

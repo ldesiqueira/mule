@@ -46,6 +46,7 @@ public class ComponentIdentifier {
   }
 
   public static ComponentIdentifier parseComponentIdentifier(String componentIdentifier) {
+    // This is reading the alias of the namespace in a given xml, not the actual namespace
     checkArgument(!isEmpty(componentIdentifier), "identifier cannot be an empty string or null");
     String[] values = componentIdentifier.split(":");
     String namespace;

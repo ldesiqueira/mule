@@ -7,6 +7,10 @@
 
 package org.mule.runtime.core.api.interception;
 
+import org.mule.runtime.api.interception.InterceptionHandler;
+
+import java.util.List;
+
 /**
  * TODO Move this to Application (deployment)
  */
@@ -16,6 +20,5 @@ public interface MessageProcessorInterceptorManager {
 
   void addInterceptionHandler(InterceptionHandler interceptionHandler);
 
-  //TODO allow multiple intereceptors
-  InterceptionHandlerChain retrieveInterceptionHandlerChain();
+  List<InterceptionHandler> retrieveInterceptionHandlerChain();
 }
