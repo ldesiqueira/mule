@@ -41,8 +41,7 @@ public class XmlEntityDecoder extends AbstractTransformer {
         try (InputStream in = ((CursorStreamProvider) src).openCursor()) {
           data = IOUtils.toString(in, encoding);
         }
-      }
-      else if (src instanceof InputStream) {
+      } else if (src instanceof InputStream) {
         data = IOUtils.toString((InputStream) src, encoding);
       } else {
         data = (String) src;

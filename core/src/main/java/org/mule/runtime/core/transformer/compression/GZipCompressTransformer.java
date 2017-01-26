@@ -36,7 +36,8 @@ public class GZipCompressTransformer extends AbstractCompressionTransformer {
     try {
       if (src instanceof CursorStreamProvider) {
         return getStrategy().compressInputStream(((CursorStreamProvider) src).openCursor());
-      } if (src instanceof InputStream) {
+      }
+      if (src instanceof InputStream) {
         return getStrategy().compressInputStream((InputStream) src);
       } else {
         byte[] data;
