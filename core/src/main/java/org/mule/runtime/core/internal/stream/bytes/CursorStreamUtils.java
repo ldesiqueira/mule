@@ -43,8 +43,8 @@ public final class CursorStreamUtils {
         cursor = ((CursorStreamProvider) payload).openCursor();
         event = Event.builder(event)
             .message(Message.builder(event.getMessage())
-                         .payload(cursor)
-                         .build())
+                .payload(cursor)
+                .build())
             .build();
       }
 
@@ -69,6 +69,5 @@ public final class CursorStreamUtils {
     }
   }
 
-  private CursorStreamUtils() {
-  }
+  private CursorStreamUtils() {}
 }
