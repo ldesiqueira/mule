@@ -14,6 +14,7 @@ abstract class AbstractCursorStream extends CursorStream {
 
   private boolean closed = false;
   protected long position = 0;
+  private long mark = 0;
 
   /**
    * {@inheritDoc}
@@ -43,10 +44,36 @@ abstract class AbstractCursorStream extends CursorStream {
     }
   }
 
+  /**
+   * {@inheritDoc}
+   * Equivalent to {@code this.seek(this.getPosition() + n)}
+   */
   @Override
   public final long skip(long n) throws IOException {
     seek(position + n);
     return n;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public synchronized void mark(int readlimit) {
+    mark = readlimit;
+  }
+
+  @Override
+  public synchronized void reset() throws IOException {
+    seek(mark);
+  }
+
+  /**
+   * {@inheritDoc}
+   * @return {@code true}
+   */
+  @Override
+  public boolean markSupported() {
+    return true;
   }
 
   /**
