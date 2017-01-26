@@ -359,7 +359,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
-  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  @Ignore("MULE-11526: ComponentIdentifier/parameters not set into splitter/flow-ref components")
   public void flowRefIntercepted() throws Exception {
     InterceptionHandler handler = new InterceptionHandler() {
 
@@ -380,7 +380,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
-  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  @Ignore("MULE-11526: ComponentIdentifier/parameters not set into splitter/flow-ref components")
   public void flowRefSkipNotAllowed() throws Exception {
     InterceptionHandler handler = new InterceptionHandler() {
 
@@ -400,7 +400,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
-  @Ignore("ComponentIdentifier/parameters not set into splitter/flow-ref components")
+  @Ignore("MULE-11526: ComponentIdentifier/parameters not set into splitter/flow-ref components")
   public void interceptiongProcessorIntercepted() throws Exception {
     InterceptionHandler handler = new InterceptionHandler() {
 
@@ -451,7 +451,7 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
   }
 
   @Test
-  @Ignore("Interception is not being configured for Processor inside a poll")
+  @Ignore("MULE-11523: Interception is not being configured for Processor inside a poll")
   public void pollingSourceIntercepted() throws Exception {
     InterceptionHandler handler = spy(new InterceptionHandler() {
 
