@@ -103,7 +103,7 @@ public class DefaultMessageProcessorChainBuilder extends AbstractMessageProcesso
     return messageProcessor;
   }
 
-  public DefaultMessageProcessorChainBuilder chain(List<Processor> processors) {
+  public final DefaultMessageProcessorChainBuilder chain(List<Processor> processors) {
     if (processors != null) {
       processors.stream().map(this::adapt).forEach(this.processors::add);
     }
@@ -111,7 +111,7 @@ public class DefaultMessageProcessorChainBuilder extends AbstractMessageProcesso
   }
 
   @Override
-  public DefaultMessageProcessorChainBuilder chain(MessageProcessorBuilder... builders) {
+  public final DefaultMessageProcessorChainBuilder chain(MessageProcessorBuilder... builders) {
     for (MessageProcessorBuilder messageProcessorBuilder : builders) {
       this.processors.add(messageProcessorBuilder);
     }

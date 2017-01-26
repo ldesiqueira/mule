@@ -15,6 +15,7 @@
     <flow name="defaultFlow">
         <httpn:listener config-ref="listenerConfig"  path="/"/>
         <test:component />
+        <logger />
     </flow>
 
 </mule>
