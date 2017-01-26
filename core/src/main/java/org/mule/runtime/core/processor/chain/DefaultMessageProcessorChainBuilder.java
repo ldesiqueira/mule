@@ -11,8 +11,6 @@ import org.mule.runtime.core.api.processor.InterceptingMessageProcessor;
 import org.mule.runtime.core.api.processor.MessageProcessorBuilder;
 import org.mule.runtime.core.api.processor.MessageProcessorChain;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.core.api.stream.StreamConsumer;
-import org.mule.runtime.core.internal.stream.bytes.processor.StreamConsumerAdapterProcessor;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -91,27 +89,20 @@ public class DefaultMessageProcessorChainBuilder extends AbstractMessageProcesso
   @Override
   public DefaultMessageProcessorChainBuilder chain(Processor... processors) {
     for (Processor messageProcessor : processors) {
-      this.processors.add(adapt(messageProcessor));
+      this.processors.add(messageProcessor);
     }
     return this;
   }
 
-  private Processor adapt(Processor messageProcessor) {
-    if (messageProcessor instanceof StreamConsumer) {
-      messageProcessor = new StreamConsumerAdapterProcessor(messageProcessor);
-    }
-    return messageProcessor;
-  }
-
-  public final DefaultMessageProcessorChainBuilder chain(List<Processor> processors) {
+  public DefaultMessageProcessorChainBuilder chain(List<Processor> processors) {
     if (processors != null) {
-      processors.stream().map(this::adapt).forEach(this.processors::add);
+      this.processors.addAll(processors);
     }
     return this;
   }
 
   @Override
-  public final DefaultMessageProcessorChainBuilder chain(MessageProcessorBuilder... builders) {
+  public DefaultMessageProcessorChainBuilder chain(MessageProcessorBuilder... builders) {
     for (MessageProcessorBuilder messageProcessorBuilder : builders) {
       this.processors.add(messageProcessorBuilder);
     }
@@ -119,7 +110,7 @@ public class DefaultMessageProcessorChainBuilder extends AbstractMessageProcesso
   }
 
   public DefaultMessageProcessorChainBuilder chainBefore(Processor processor) {
-    this.processors.add(0, adapt(processor));
+    this.processors.add(0, processor);
     return this;
   }
 

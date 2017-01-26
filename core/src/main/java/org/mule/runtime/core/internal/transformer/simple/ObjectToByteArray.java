@@ -9,7 +9,6 @@ package org.mule.runtime.core.internal.transformer.simple;
 import static org.mule.runtime.api.metadata.DataType.fromType;
 import static org.mule.runtime.core.api.Event.getCurrentEvent;
 import org.mule.runtime.api.metadata.DataType;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.transformer.TransformerException;
 import org.mule.runtime.core.message.OutputHandler;
@@ -25,7 +24,7 @@ import java.nio.charset.Charset;
  * <code>ObjectToByteArray</code> converts serilaizable object to a byte array but treats <code>java.lang.String</code>
  * differently by converting to bytes using the <code>String.getBytes()</code> method.
  */
-public class ObjectToByteArray extends SerializableToByteArray implements StreamConsumer {
+public class ObjectToByteArray extends SerializableToByteArray {
 
   public ObjectToByteArray() {
     this.registerSourceType(DataType.INPUT_STREAM);

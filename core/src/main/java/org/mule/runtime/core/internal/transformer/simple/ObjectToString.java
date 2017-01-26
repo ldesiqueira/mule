@@ -7,13 +7,11 @@
 package org.mule.runtime.core.internal.transformer.simple;
 
 import static org.mule.runtime.core.api.Event.getCurrentEvent;
-
 import org.mule.runtime.api.metadata.DataType;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.transformer.DiscoverableTransformer;
 import org.mule.runtime.core.api.transformer.TransformerException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.message.OutputHandler;
 import org.mule.runtime.core.transformer.AbstractTransformer;
 import org.mule.runtime.core.util.IOUtils;
@@ -28,7 +26,7 @@ import java.nio.charset.Charset;
  * <code>ObjectToString</code> transformer is useful for debugging. It will return human-readable output for various kinds of
  * objects. Right now, it is just coded to handle Map and Collection objects. Others will be added.
  */
-public class ObjectToString extends AbstractTransformer implements DiscoverableTransformer, StreamConsumer {
+public class ObjectToString extends AbstractTransformer implements DiscoverableTransformer {
 
   /** Give core transformers a slighty higher priority */
   private int priorityWeighting = DiscoverableTransformer.DEFAULT_PRIORITY_WEIGHTING + 1;

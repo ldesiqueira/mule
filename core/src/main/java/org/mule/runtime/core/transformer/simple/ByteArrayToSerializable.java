@@ -12,7 +12,6 @@ import org.mule.runtime.core.api.serialization.ObjectSerializer;
 import org.mule.runtime.core.api.transformer.DiscoverableTransformer;
 import org.mule.runtime.core.api.transformer.TransformerException;
 import org.mule.runtime.core.config.i18n.CoreMessages;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.transformer.AbstractTransformer;
 
 import java.io.InputStream;
@@ -21,7 +20,7 @@ import java.nio.charset.Charset;
 /**
  * <code>ByteArrayToSerializable</code> converts a serialized object to its object representation
  */
-public class ByteArrayToSerializable extends AbstractTransformer implements DiscoverableTransformer, StreamConsumer {
+public class ByteArrayToSerializable extends AbstractTransformer implements DiscoverableTransformer {
 
   /**
    * Give core transformers a slightly higher priority

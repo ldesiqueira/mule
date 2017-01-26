@@ -8,7 +8,6 @@ package org.mule.runtime.core.internal.transformer.simple;
 
 import org.mule.runtime.api.metadata.DataType;
 import org.mule.runtime.core.api.transformer.TransformerException;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.transformer.AbstractDiscoverableTransformer;
 
 import java.io.IOException;
@@ -16,7 +15,7 @@ import java.nio.charset.Charset;
 
 import javax.activation.DataHandler;
 
-public class DataHandlerToInputStreamTransformer extends AbstractDiscoverableTransformer implements StreamConsumer {
+public class DataHandlerToInputStreamTransformer extends AbstractDiscoverableTransformer {
 
   public DataHandlerToInputStreamTransformer() {
     registerSourceType(DataType.fromType(DataHandler.class));

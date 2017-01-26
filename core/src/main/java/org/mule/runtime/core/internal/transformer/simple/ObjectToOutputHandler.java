@@ -9,7 +9,6 @@ package org.mule.runtime.core.internal.transformer.simple;
 import org.mule.runtime.api.i18n.I18nMessageFactory;
 import org.mule.runtime.api.metadata.DataType;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.api.transformer.DiscoverableTransformer;
 import org.mule.runtime.core.api.transformer.TransformerException;
 import org.mule.runtime.core.message.OutputHandler;
@@ -21,7 +20,7 @@ import java.io.Serializable;
 import java.nio.charset.Charset;
 
 /** <code>ObjectToOutputHandler</code> converts a byte array into a String. */
-public class ObjectToOutputHandler extends AbstractTransformer implements DiscoverableTransformer, StreamConsumer {
+public class ObjectToOutputHandler extends AbstractTransformer implements DiscoverableTransformer {
 
   /** Give core transformers a slighty higher priority */
   private int priorityWeighting = DiscoverableTransformer.DEFAULT_PRIORITY_WEIGHTING + 1;

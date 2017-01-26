@@ -6,7 +6,10 @@
  */
 package org.mule.runtime.core.api.processor;
 
+import static org.mule.runtime.core.internal.stream.bytes.CursorStreamUtils.withCursoredEvent;
 import org.mule.runtime.api.exception.MuleException;
+import org.mule.runtime.api.lifecycle.Initialisable;
+import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.core.AbstractAnnotatedObject;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
@@ -14,9 +17,6 @@ import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.construct.FlowConstructAware;
 import org.mule.runtime.core.api.context.MuleContextAware;
 import org.mule.runtime.core.api.el.ExtendedExpressionManager;
-import org.mule.runtime.api.lifecycle.Initialisable;
-import org.mule.runtime.api.lifecycle.InitialisationException;
-import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.util.StringUtils;
 
 import org.apache.log4j.Level;
@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * your needs.
  */
 public class LoggerMessageProcessor extends AbstractAnnotatedObject
-    implements Processor, Initialisable, MuleContextAware, FlowConstructAware, StreamConsumer {
+    implements Processor, Initialisable, MuleContextAware, FlowConstructAware {
 
   protected transient Logger logger;
 
@@ -58,8 +58,10 @@ public class LoggerMessageProcessor extends AbstractAnnotatedObject
 
   @Override
   public Event process(Event event) throws MuleException {
-    log(event);
-    return event;
+    return withCursoredEvent(event, cursored -> {
+      log(event);
+      return event;
+    });
   }
 
   protected void log(Event event) {

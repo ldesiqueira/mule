@@ -18,8 +18,12 @@ public interface CheckedFunction<T, R> extends Function<T, R> {
     try {
       return applyChecked(t);
     } catch (Throwable throwable) {
-      throw propagate(throwable);
+      return handleException(throwable);
     }
+  }
+
+  default R handleException(Throwable throwable) {
+    throw propagate(throwable);
   }
 
   R applyChecked(T t) throws Throwable;
