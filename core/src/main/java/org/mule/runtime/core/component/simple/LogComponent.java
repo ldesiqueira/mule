@@ -10,6 +10,7 @@ import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.MuleEventContext;
 import org.mule.runtime.core.api.component.simple.LogService;
 import org.mule.runtime.core.api.lifecycle.Callable;
+import org.mule.runtime.core.api.stream.StreamConsumer;
 import org.mule.runtime.core.util.StringMessageUtils;
 
 import javax.inject.Inject;
@@ -20,7 +21,7 @@ import org.slf4j.LoggerFactory;
 /**
  * <code>LogComponent</code> simply logs the content (or content length if it is a large message)
  */
-public class LogComponent implements Callable, LogService {
+public class LogComponent implements Callable, LogService, StreamConsumer {
 
   private static Logger logger = LoggerFactory.getLogger(LogComponent.class);
   @Inject

@@ -13,6 +13,7 @@
     <flow name="defaultFlow">
         <httpn:listener config-ref="listenerConfig"  path="/" responseStreamingMode="AUTO"/>
         <echo-component/>
+        <logger level="ERROR" message="TYPE AFTER --> #[mel:payload.getClass().getName()]" />
     </flow>
 
 </mule>
