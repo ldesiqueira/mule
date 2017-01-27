@@ -91,10 +91,13 @@ public class DefaultInterceptionEvent implements InterceptionEvent {
   /**
    * Updates the state of this object, overriding the {@link #interceptedInput} with the result of
    * {@link #interceptedOutput#build()} and resetting {@link #interceptedOutput}.
+   *
+   * @return {@link Event} with the result.
    */
-  public void resolve() {
+  public Event resolve() {
     interceptedInput = interceptedOutput.build();
     interceptedOutput = Event.builder(interceptedInput);
+    return interceptedInput;
   }
 
   /**

@@ -7,12 +7,14 @@
 package org.mule.runtime.core.api.processor.strategy;
 
 import static reactor.core.publisher.Flux.from;
+
+import java.util.function.Function;
+
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.construct.FlowConstruct;
 import org.mule.runtime.core.api.exception.MessagingExceptionHandler;
 import org.mule.runtime.core.api.processor.Processor;
-
-import java.util.function.Function;
+import org.mule.runtime.core.api.processor.ReactiveProcessor;
 
 import org.reactivestreams.Publisher;
 
@@ -55,9 +57,12 @@ public interface ProcessingStrategy {
    * @param processorFunction processor function
    * @return enriched processor function
    */
-  default Function<Publisher<Event>, Publisher<Event>> onProcessor(Processor processor,
-                                                                   Function<Publisher<Event>, Publisher<Event>> processorFunction) {
-    return publisher -> from(publisher).transform(processorFunction);
+  //default Function<Publisher<Event>, Publisher<Event>> onProcessor(Processor processor,
+  //                                                                 Function<Publisher<Event>, Publisher<Event>> processorFunction) {
+  //  return publisher -> from(publisher).transform(processorFunction);
+  //}
+  default Function<ReactiveProcessor, ReactiveProcessor> onProcessor() {
+    return processor -> publisher -> from(publisher).transform(processor);
   }
 
   /**
