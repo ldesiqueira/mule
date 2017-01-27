@@ -172,7 +172,8 @@ public final class StreamBuffer {
     ByteBuffer src = buffer.duplicate();
     final int newPosition = toIntExact(requiredRange.start - bufferRange.start);
     src.position(newPosition);
-    src.limit(newPosition + min(dest.remaining(), min(length, src.remaining())));
+    //src.limit(newPosition + min(dest.remaining(), min(length, src.remaining())));
+    src.limit(newPosition + min(dest.remaining(), min(requiredRange.length(), src.remaining())));
     if (src.hasRemaining()) {
       int remaining = src.remaining();
       dest.put(src);
@@ -277,6 +278,10 @@ public final class StreamBuffer {
       }
 
       return empty();
+    }
+
+    private int length() {
+      return toIntExact(end - start);
     }
 
     private boolean isEmpty() {
