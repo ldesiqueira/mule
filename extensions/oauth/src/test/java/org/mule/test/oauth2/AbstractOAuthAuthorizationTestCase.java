@@ -29,23 +29,23 @@ import static org.mule.extension.oauth2.internal.OAuthConstants.REFRESH_TOKEN_PA
 import static org.mule.extension.oauth2.internal.OAuthConstants.SCOPE_PARAMETER;
 import static org.mule.runtime.module.http.api.HttpConstants.HttpStatus.INTERNAL_SERVER_ERROR;
 import static org.mule.runtime.module.http.api.HttpHeaders.Names.AUTHORIZATION;
-
 import org.mule.functional.junit4.MuleArtifactFunctionalTestCase;
+import org.mule.runtime.extension.api.client.DefaultOperationParameters;
+import org.mule.runtime.extension.api.client.ExtensionsClient;
 import org.mule.runtime.module.http.api.HttpHeaders;
 import org.mule.runtime.module.http.internal.HttpParser;
 import org.mule.tck.junit4.rule.DynamicPort;
 import org.mule.tck.junit4.rule.SystemProperty;
 import org.mule.test.runner.ArtifactClassLoaderRunnerConfig;
 
+import com.github.tomakehurst.wiremock.client.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
 import com.google.common.collect.ImmutableMap;
 
 import java.io.UnsupportedEncodingException;
 
 import org.junit.Before;
 import org.junit.Rule;
-
-import com.github.tomakehurst.wiremock.client.RequestPatternBuilder;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
 
 @ArtifactClassLoaderRunnerConfig(plugins = {"org.mule.modules:mule-module-sockets", "org.mule.modules:mule-module-http-ext"},
     providedInclusions = "org.mule.modules:mule-module-sockets")
@@ -95,11 +95,15 @@ public abstract class AbstractOAuthAuthorizationTestCase extends MuleArtifactFun
   @Before
   public void before() throws Exception {
     try {
-      // Force the initialization of the OAuth context
-      // TODO MULE-11405 switch to the client
-      // muleContext.getRegistry().lookupObject(ExtensionsClient.class).execute("HTTP", "request",
-      // builder().configName("requestConfig").build());
-      flowRunner("testFlow").runNoVerify();
+      //Force the initialization of the OAuth context
+      muleContext.getRegistry().lookupObject(ExtensionsClient.class).executeAsync("HTTP", "request",
+                                                                                  DefaultOperationParameters.builder()
+                                                                                      .configName("requestConfig")
+                                                                                      .addParameter("host", "localhost")
+                                                                                      .addParameter("path", "/resource")
+                                                                                      .addParameter("port",
+                                                                                                    oauthServerPort.getNumber())
+                                                                                      .addParameter("method", "POST").build());
     } catch (Exception e) {
       // Ignore
     }

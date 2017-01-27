@@ -15,6 +15,7 @@ import static reactor.core.publisher.Mono.just;
 
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.exception.MuleRuntimeException;
+import org.mule.runtime.api.lifecycle.Disposable;
 import org.mule.runtime.api.lifecycle.Initialisable;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.message.Attributes;
@@ -34,6 +35,7 @@ import org.mule.runtime.extension.api.client.OperationParameters;
 import org.mule.runtime.extension.api.runtime.ConfigurationProvider;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.extension.internal.client.ComplexParameter;
+import org.mule.runtime.module.extension.internal.runtime.ExtensionComponent;
 import org.mule.runtime.module.extension.internal.runtime.objectbuilder.DefaultObjectBuilder;
 import org.mule.runtime.module.extension.internal.runtime.operation.OperationMessageProcessor;
 import org.mule.runtime.module.extension.internal.runtime.resolver.StaticValueResolver;
@@ -41,7 +43,9 @@ import org.mule.runtime.module.extension.internal.runtime.resolver.TypeSafeExpre
 import org.mule.runtime.module.extension.internal.runtime.resolver.ValueResolver;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.inject.Inject;
@@ -57,7 +61,7 @@ import javax.inject.Inject;
  *
  * @since 4.0
  */
-public final class DefaultExtensionsClient implements ExtensionsClient, Initialisable {
+public final class DefaultExtensionsClient implements ExtensionsClient, Initialisable, Disposable {
 
   @Inject
   private MuleContext muleContext;
@@ -67,6 +71,7 @@ public final class DefaultExtensionsClient implements ExtensionsClient, Initiali
 
   private final Map<Pair<String, String>, OperationModel> operations = new LinkedHashMap<>();
   private final TemplateParser parser = TemplateParser.createMuleStyleParser();
+  private final Set<OperationMessageProcessor> processors = new LinkedHashSet<>();
 
   private ExtensionManager extensionManager;
 
@@ -88,8 +93,10 @@ public final class DefaultExtensionsClient implements ExtensionsClient, Initiali
                                                                                 String operation,
                                                                                 OperationParameters parameters) {
     OperationMessageProcessor processor = createProcessor(extension, operation, parameters);
+    processors.add(processor);
     return from(processor.apply(just(getInitialiserEvent(muleContext))))
         .map(event -> Result.<T, A>builder(event.getMessage()).build())
+        .doAfterTerminate((result, throwable) -> processor.doDispose())
         .toFuture();
   }
 
@@ -101,6 +108,7 @@ public final class DefaultExtensionsClient implements ExtensionsClient, Initiali
       throws MuleException {
     OperationMessageProcessor processor = createProcessor(extension, operation, params);
     Event process = processor.process(getInitialiserEvent(muleContext));
+    processors.add(processor);
     return Result.<T, A>builder(process.getMessage()).build();
   }
 
@@ -176,5 +184,10 @@ public final class DefaultExtensionsClient implements ExtensionsClient, Initiali
   private ExtensionModel findExtension(String extensionName) {
     return extensionManager.getExtension(extensionName)
         .orElseThrow(() -> new MuleRuntimeException(createStaticMessage("No Extension [" + extensionName + "] Found")));
+  }
+
+  @Override
+  public void dispose() {
+    processors.stream().forEach(ExtensionComponent::dispose);
   }
 }

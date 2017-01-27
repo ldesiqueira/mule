@@ -29,9 +29,4 @@
             </httpn:authentication>
         </httpn:request-connection>
     </httpn:request-config>
-
-    <flow name="testFlow">
-        <httpn:request host="localhost" port="${oauth.server.port}" path="/resource" method="POST"
-                      config-ref="requestConfig"/>
-    </flow>
 </mule>
