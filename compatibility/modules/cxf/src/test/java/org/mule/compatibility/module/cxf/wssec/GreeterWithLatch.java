@@ -8,7 +8,7 @@ package org.mule.compatibility.module.cxf.wssec;
 
 import static org.mule.runtime.core.api.Event.getCurrentEvent;
 
-import org.mule.runtime.core.api.security.SecurityContext;
+import org.mule.runtime.api.security.SecurityContext;
 import org.mule.runtime.core.util.concurrent.Latch;
 
 import org.apache.hello_world_soap_http.GreeterImpl;

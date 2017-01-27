@@ -9,7 +9,7 @@ package org.mule.compatibility.module.cxf.wssec;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import org.mule.runtime.core.api.security.SecurityContext;
+import org.mule.runtime.api.security.SecurityContext;
 
 import org.junit.Ignore;
 

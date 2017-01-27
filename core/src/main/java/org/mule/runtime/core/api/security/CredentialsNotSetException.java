@@ -6,6 +6,8 @@
  */
 package org.mule.runtime.core.api.security;
 
+import org.mule.runtime.api.security.SecurityContext;
+import org.mule.runtime.api.security.UnauthorisedException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.api.i18n.I18nMessage;
 
@@ -28,6 +30,6 @@ public class CredentialsNotSetException extends UnauthorisedException {
   }
 
   public CredentialsNotSetException(Event event, SecurityContext context, SecurityFilter filter) {
-    super(event, context, filter);
+    super(context, filter.getClass().getName(), event.getContext().getOriginatingConnectorName());
   }
 }

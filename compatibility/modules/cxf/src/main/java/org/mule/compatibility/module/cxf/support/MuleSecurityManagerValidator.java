@@ -8,10 +8,11 @@ package org.mule.compatibility.module.cxf.support;
 
 import static org.mule.runtime.core.api.Event.getCurrentEvent;
 
-import org.mule.runtime.core.api.security.Authentication;
-import org.mule.runtime.core.api.security.SecurityContext;
-import org.mule.runtime.core.api.security.SecurityProviderNotFoundException;
-import org.mule.runtime.core.api.security.UnknownAuthenticationTypeException;
+import org.mule.runtime.api.security.Authentication;
+import org.mule.runtime.api.security.SecurityContext;
+import org.mule.runtime.api.security.SecurityException;
+import org.mule.runtime.api.security.SecurityProviderNotFoundException;
+import org.mule.runtime.api.security.UnknownAuthenticationTypeException;
 import org.mule.runtime.core.security.DefaultMuleAuthentication;
 import org.mule.runtime.core.security.MuleCredentials;
 
@@ -53,7 +54,7 @@ public class MuleSecurityManagerValidator implements Validator {
         logger.warn("Could not create security context after having successfully authenticated.", e);
       }
       getCurrentEvent().getSession().setSecurityContext(secContext);
-    } catch (org.mule.runtime.core.api.security.SecurityException e) {
+    } catch (SecurityException e) {
       throw new WSSecurityException(WSSecurityException.FAILED_AUTHENTICATION, null, null, e);
     } catch (SecurityProviderNotFoundException e) {
       throw new WSSecurityException(WSSecurityException.FAILED_AUTHENTICATION, null, null, e);

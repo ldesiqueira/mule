@@ -7,7 +7,7 @@
 package org.mule.runtime.core.security;
 
 import org.mule.runtime.core.api.Event;
-import org.mule.runtime.core.api.security.Authentication;
+import org.mule.runtime.api.security.Authentication;
 import org.mule.runtime.core.api.security.Credentials;
 
 import java.util.Map;

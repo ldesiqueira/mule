@@ -6,6 +6,11 @@
  */
 package org.mule.runtime.core.api.security;
 
+import org.mule.runtime.api.security.Authentication;
+import org.mule.runtime.api.security.SecurityContext;
+import org.mule.runtime.api.security.SecurityException;
+import org.mule.runtime.api.security.SecurityProviderNotFoundException;
+import org.mule.runtime.api.security.UnknownAuthenticationTypeException;
 import org.mule.runtime.core.api.EncryptionStrategy;
 import org.mule.runtime.api.lifecycle.Initialisable;
 

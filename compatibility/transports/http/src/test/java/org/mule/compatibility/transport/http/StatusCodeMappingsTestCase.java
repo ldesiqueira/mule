@@ -8,10 +8,11 @@ package org.mule.compatibility.transport.http;
 
 import static org.junit.Assert.assertEquals;
 
+import org.mule.runtime.api.security.SecurityException;
 import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.routing.RoutingException;
-import org.mule.runtime.core.api.security.UnauthorisedException;
+import org.mule.runtime.api.security.UnauthorisedException;
 import org.mule.runtime.api.i18n.I18nMessageFactory;
 import org.mule.runtime.core.config.ExceptionHelper;
 import org.mule.tck.junit4.AbstractMuleTestCase;
@@ -36,7 +37,7 @@ public class StatusCodeMappingsTestCase extends AbstractMuleTestCase {
     String code = ExceptionHelper.getErrorMapping("http", RoutingException.class, mockMuleContext);
     assertEquals("500", code);
 
-    code = ExceptionHelper.getErrorMapping("HTTP", org.mule.runtime.core.api.security.SecurityException.class, mockMuleContext);
+    code = ExceptionHelper.getErrorMapping("HTTP", SecurityException.class, mockMuleContext);
     assertEquals("403", code);
 
     code = ExceptionHelper.getErrorMapping("http", UnauthorisedException.class, mockMuleContext);
@@ -53,7 +54,7 @@ public class StatusCodeMappingsTestCase extends AbstractMuleTestCase {
     String code = ExceptionHelper.getErrorMapping("httpS", RoutingException.class, mockMuleContext);
     assertEquals("500", code);
 
-    code = ExceptionHelper.getErrorMapping("HTTPS", org.mule.runtime.core.api.security.SecurityException.class, mockMuleContext);
+    code = ExceptionHelper.getErrorMapping("HTTPS", SecurityException.class, mockMuleContext);
     assertEquals("403", code);
 
     code = ExceptionHelper.getErrorMapping("https", UnauthorisedException.class, mockMuleContext);
