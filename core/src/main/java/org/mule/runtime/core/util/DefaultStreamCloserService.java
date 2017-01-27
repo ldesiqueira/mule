@@ -6,6 +6,7 @@
  */
 package org.mule.runtime.core.util;
 
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.Closeable;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.api.exception.MuleException;
@@ -89,11 +90,14 @@ public class DefaultStreamCloserService implements StreamCloserService {
       return InputStream.class.isAssignableFrom(streamType) || InputSource.class.isAssignableFrom(streamType)
           || StreamSource.class.isAssignableFrom(streamType) || Closeable.class.isAssignableFrom(streamType)
           || java.io.Closeable.class.isAssignableFrom(streamType)
+          || CursorStreamProvider.class.isAssignableFrom(streamType)
           || (SAXSource.class.isAssignableFrom(streamType) && !streamType.getName().endsWith("StaxSource"));
     }
 
     public void close(Object stream) throws IOException {
-      if (stream instanceof InputStream) {
+      if (stream instanceof CursorStreamProvider) {
+        ((CursorStreamProvider) stream).close();
+      } if (stream instanceof InputStream) {
         try {
           ((InputStream) stream).close();
         } catch (IOException e) {

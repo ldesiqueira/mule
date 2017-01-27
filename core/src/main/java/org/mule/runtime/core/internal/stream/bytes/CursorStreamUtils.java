@@ -7,65 +7,70 @@
 package org.mule.runtime.core.internal.stream.bytes;
 
 import static org.apache.commons.io.IOUtils.closeQuietly;
+import static org.mule.runtime.core.api.rx.Exceptions.rxExceptionToMuleException;
 import static reactor.core.Exceptions.unwrap;
 import org.mule.runtime.api.exception.MuleException;
-import org.mule.runtime.api.exception.MuleRuntimeException;
 import org.mule.runtime.api.message.Message;
 import org.mule.runtime.api.streaming.CursorStream;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.api.util.Reference;
-import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.util.func.CheckedFunction;
 
 public final class CursorStreamUtils {
 
-  public static <T> T withCursoredEvent(Event event, CheckedFunction<Event, T> f) throws MuleException {
+  public static Event withCursoredEvent(Event event, CheckedFunction<Event, Event> f) throws MuleException {
     Reference<Throwable> exception = new Reference<>();
-    CheckedFunction<Event, T> function = new CheckedFunction<Event, T>() {
+    CheckedFunction<Event, Event> function = new CheckedFunction<Event, Event>() {
 
       @Override
-      public T applyChecked(Event event) throws Throwable {
+      public Event applyChecked(Event event) throws Throwable {
         return f.apply(event);
       }
 
       @Override
-      public T handleException(Throwable throwable) {
+      public Event handleException(Throwable throwable) {
         exception.set(unwrap(throwable));
         return null;
       }
     };
 
     Object payload = event.getMessage().getPayload().getValue();
+    CursorStreamProvider cursorStreamProvider = null;
     CursorStream cursor = null;
     try {
       if (payload instanceof CursorStreamProvider) {
-        cursor = ((CursorStreamProvider) payload).openCursor();
-        event = Event.builder(event)
-            .message(Message.builder(event.getMessage())
-                .payload(cursor)
-                .build())
-            .build();
+        cursorStreamProvider = (CursorStreamProvider) payload;
+        cursor = cursorStreamProvider.openCursor();
+        event = replacePayload(event, cursor);
       }
 
-      T value = function.apply(event);
+      Event value = function.apply(event);
 
       if (value == null) {
-        Throwable t = exception.get();
-        if (t != null) {
-          if (t instanceof MuleException) {
-            throw (MuleException) t;
-          } else if (t instanceof Exception) {
-            throw new DefaultMuleException(t);
-          } else {
-            throw new MuleRuntimeException(t);
-          }
-        }
+        handlePossibleException(exception);
+      } else if (value.getMessage().getPayload().getValue() == cursor) {
+        value = replacePayload(value, cursorStreamProvider);
       }
 
       return value;
     } finally {
       closeQuietly(cursor);
+    }
+  }
+
+  private static Event replacePayload(Event event, Object newPayload) {
+    return Event.builder(event)
+        .message(Message.builder(event.getMessage())
+                     .payload(newPayload)
+                     .build())
+        .build();
+  }
+
+  private static void handlePossibleException(Reference<Throwable> exception) throws MuleException {
+    Throwable t = exception.get();
+    if (t != null) {
+      throw rxExceptionToMuleException(t);
     }
   }
 

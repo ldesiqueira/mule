@@ -7,11 +7,10 @@
 package org.mule.runtime.core.internal.stream.bytes;
 
 import org.mule.runtime.api.streaming.CursorStream;
-import org.mule.runtime.api.streaming.CursorStreamProvider;
 
 import java.io.InputStream;
 
-public class BufferedCursorStreamProvider extends CursorStreamProvider {
+public class BufferedCursorStreamProvider extends AbstractCursorStreamProvider {
 
   private final StreamBuffer buffer;
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:marvel="http://www.mulesoft.org/schema/mule/marvel"
+      xmlns:test="http://www.mulesoft.org/schema/mule/test"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+      http://www.mulesoft.org/schema/mule/test http://www.mulesoft.org/schema/mule/test/current/mule-test.xsd
+               http://www.mulesoft.org/schema/mule/marvel http://www.mulesoft.org/schema/mule/marvel/current/mule-marvel.xsd">
+
+    <marvel:dr-strange name="drStrange" />
+
+    <flow name="readStream">
+        <marvel:read-stream config-ref="drStrange"/>
+    </flow>
+
+    <flow name="seekStream">
+        <marvel:seek-stream position="#[position]" config-ref="drStrange"/>
+    </flow>
+
+    <flow name="streamSerializationRoundTrip">
+        <marvel:serialize-stream config-ref="drStrange"/>
+        <marvel:deserealize-as-string config-ref="drStrange"/>
+    </flow>
+
+</mule>
