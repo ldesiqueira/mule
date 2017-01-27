@@ -20,7 +20,7 @@ import org.mule.runtime.core.security.MuleSecurityManager;
 import java.util.List;
 
 /**
- * //TODO
+ * Default implementation of a {@link SecurityContextHandler}
  *
  * @since 4.0
  */
