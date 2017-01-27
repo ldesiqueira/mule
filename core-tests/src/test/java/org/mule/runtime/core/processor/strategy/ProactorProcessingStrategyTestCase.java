@@ -9,18 +9,24 @@ package org.mule.runtime.core.processor.strategy;
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
 import static org.mule.runtime.core.processor.strategy.AbstractSchedulingProcessingStrategy.TRANSACTIONAL_ERROR_MESSAGE;
 
 import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
+import org.mule.runtime.core.exception.MessagingException;
 import org.mule.runtime.core.processor.strategy.ProactorProcessingStrategyFactory.ProactorProcessingStrategy;
 import org.mule.runtime.core.transaction.TransactionCoordination;
 import org.mule.tck.testmodels.mule.TestTransaction;
 
+import org.junit.Ignore;
+import org.junit.internal.matchers.ThrowableCauseMatcher;
+import org.junit.internal.matchers.ThrowableMessageMatcher;
 import ru.yandex.qatools.allure.annotations.Description;
 import ru.yandex.qatools.allure.annotations.Features;
 import ru.yandex.qatools.allure.annotations.Stories;
@@ -50,12 +56,16 @@ public class ProactorProcessingStrategyTestCase extends AbstractProcessingStrate
     assertThat(threads.stream().filter(name -> name.startsWith(CPU_INTENSIVE)).count(), equalTo(0l));
   }
 
+  @Ignore("MULE-11352")
   @Override
   @Description("When ProactorProcessingStrategy is configured, two concurrent requests may be processed by two different "
       + " cpu light threads. MULE-11132 is needed for true reactor behaviour.")
   public void singleCpuLightConcurrent() throws Exception {
     super.singleCpuLightConcurrent();
     assertThat(threads.size(), equalTo(2));
+    assertThat(threads.stream().filter(name -> name.startsWith(CPU_LIGHT)).count(), equalTo(2l));
+    assertThat(threads.stream().filter(name -> name.startsWith(IO)).count(), equalTo(0l));
+    assertThat(threads.stream().filter(name -> name.startsWith(CPU_INTENSIVE)).count(), equalTo(0l));
   }
 
   @Override
@@ -151,8 +161,9 @@ public class ProactorProcessingStrategyTestCase extends AbstractProcessingStrate
 
     TransactionCoordination.getInstance().bindTransaction(new TestTransaction(muleContext));
 
-    expectedException.expect(DefaultMuleException.class);
-    expectedException.expectMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE));
+    expectedException.expect(MessagingException.class);
+    expectedException.expectCause(instanceOf(DefaultMuleException.class));
+    expectedException.expectCause(hasMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE)));
     process(flow, testEvent());
   }
 

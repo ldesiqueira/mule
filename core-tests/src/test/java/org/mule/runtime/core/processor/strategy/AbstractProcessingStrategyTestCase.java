@@ -11,13 +11,17 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.mule.runtime.core.api.construct.Flow.builder;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mule.runtime.core.api.processor.ReactiveProcessor.ProcessingType.*;
+
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.scheduler.Scheduler;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.construct.Flow;
 import org.mule.runtime.core.api.processor.Processor;
-import org.mule.runtime.core.api.processor.ReactiveProcessor.ProcessingType;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
 import org.mule.runtime.core.api.registry.RegistrationException;
 import org.mule.runtime.core.util.concurrent.Latch;
@@ -27,6 +31,7 @@ import org.mule.tck.junit4.AbstractReactiveProcessorTestCase;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
@@ -36,6 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -52,7 +58,7 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
 
     @Override
     public ProcessingType getProcessingType() {
-      return ProcessingType.CPU_LITE;
+      return CPU_LITE;
     }
   };
   protected Processor cpuIntensiveProcessor = new ThreadTrackingProcessor() {
@@ -66,7 +72,7 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
 
     @Override
     public ProcessingType getProcessingType() {
-      return ProcessingType.BLOCKING;
+      return BLOCKING;
     }
   };
 
@@ -111,9 +117,14 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
     process(flow, testEvent());
   }
 
+  @Ignore("MULE-11352")
   @Test
   public void singleCpuLightConcurrent() throws Exception {
-    FirstInvocationLatchedProcessor latchedProcessor = new FirstInvocationLatchedProcessor(ProcessingType.CPU_LITE);
+    internalSingleCpuLightConcurrent(true);
+  }
+
+  protected void internalSingleCpuLightConcurrent(boolean doesNotBlock) throws MuleException, InterruptedException {
+    FirstInvocationLatchedProcessor latchedProcessor = new FirstInvocationLatchedProcessor(CPU_LITE);
 
     flow.setMessageProcessors(singletonList(latchedProcessor));
     flow.initialise();
@@ -121,9 +132,14 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
 
     asyncExecutor.submit(() -> process(flow, testEvent()));
 
-    latchedProcessor.awaitFirst();
-    process(flow, testEvent());
+    latchedProcessor.getFirstCalledLatch().await();
+
+    asyncExecutor.submit(() -> process(flow, testEvent()));
+    assertThat(latchedProcessor.getSecondCalledLatch().await(BLOCK_TIMEOUT, MILLISECONDS), is(!doesNotBlock));
+
     latchedProcessor.releaseFirst();
+
+    flow.dispose();
   }
 
   @Test
@@ -198,6 +214,7 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
     private ProcessingType type;
     private volatile Latch latch = new Latch();
     private volatile Latch firstCalledLatch = new Latch();
+    private volatile Latch secondCalledLatch = new Latch();
     private AtomicBoolean firstCalled = new AtomicBoolean();
 
     public FirstInvocationLatchedProcessor(ProcessingType type) {
@@ -214,6 +231,8 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
         } catch (InterruptedException e) {
           throw new RuntimeException(e);
         }
+      } else {
+        secondCalledLatch.countDown();
       }
 
       return event;
@@ -228,8 +247,12 @@ public abstract class AbstractProcessingStrategyTestCase extends AbstractReactiv
       latch.release();
     }
 
-    public void awaitFirst() throws InterruptedException {
-      firstCalledLatch.await();
+    public CountDownLatch getFirstCalledLatch() throws InterruptedException {
+      return firstCalledLatch;
+    }
+
+    public CountDownLatch getSecondCalledLatch() throws InterruptedException {
+      return secondCalledLatch;
     }
 
   }

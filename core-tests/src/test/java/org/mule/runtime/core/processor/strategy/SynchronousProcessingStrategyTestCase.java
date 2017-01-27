@@ -9,8 +9,10 @@ package org.mule.runtime.core.processor.strategy;
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mule.runtime.core.processor.strategy.AbstractSchedulingProcessingStrategy.TRANSACTIONAL_ERROR_MESSAGE;
 import static org.mule.runtime.core.processor.strategy.SynchronousProcessingStrategyFactory.SYNCHRONOUS_PROCESSING_STRATEGY_INSTANCE;
 
+import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
 import org.mule.runtime.core.transaction.TransactionCoordination;
@@ -45,8 +47,8 @@ public class SynchronousProcessingStrategyTestCase extends AbstractProcessingStr
   @Description("Regardless of processor type, when the SynchronousProcessingStrategy is configured, the pipeline is executed "
       + "synchronously in a caller thread.")
   public void singleCpuLightConcurrent() throws Exception {
-    super.singleCpuLightConcurrent();
-    assertSynchronous(2);
+    internalSingleCpuLightConcurrent(true);
+    assertSynchronous(1);
   }
 
   @Override

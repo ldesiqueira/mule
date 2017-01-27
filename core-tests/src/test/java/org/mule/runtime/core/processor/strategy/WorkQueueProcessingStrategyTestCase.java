@@ -8,12 +8,15 @@ package org.mule.runtime.core.processor.strategy;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
 import static org.mule.runtime.core.processor.strategy.AbstractSchedulingProcessingStrategy.TRANSACTIONAL_ERROR_MESSAGE;
 
 import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
+import org.mule.runtime.core.exception.MessagingException;
 import org.mule.runtime.core.processor.strategy.WorkQueueProcessingStrategyFactory.WorkQueueProcessingStrategy;
 import org.mule.runtime.core.transaction.TransactionCoordination;
 import org.mule.tck.testmodels.mule.TestTransaction;
@@ -117,8 +120,9 @@ public class WorkQueueProcessingStrategyTestCase extends AbstractProcessingStrat
 
     TransactionCoordination.getInstance().bindTransaction(new TestTransaction(muleContext));
 
-    expectedException.expect(DefaultMuleException.class);
-    expectedException.expectMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE));
+    expectedException.expect(MessagingException.class);
+    expectedException.expectCause(instanceOf(DefaultMuleException.class));
+    expectedException.expectCause(hasMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE)));
     process(flow, testEvent());
   }
 

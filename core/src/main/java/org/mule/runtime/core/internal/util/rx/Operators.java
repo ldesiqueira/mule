@@ -42,6 +42,28 @@ public final class Operators {
     };
   }
 
+  /**
+   * Custom function to be used with {@link reactor.core.publisher.Flux#handle(BiConsumer)} when a map function may return
+   * {@code null} and this should be interpreted as empty rather than causing an error. If null is return by the function then the
+   * {@link org.mule.runtime.core.api.EventContext} is also completed.
+   *
+   * @param mapper map function
+   * @return custom operator {@link BiConsumer} to be used with {@link reactor.core.publisher.Flux#handle(BiConsumer)}.
+   */
+  public static BiConsumer<Event, SynchronousSink<Event>> echoOnNullMap(Function<Event, Event> mapper) {
+    return (t, sink) -> {
+      if (t != null) {
+        Event r = mapper.apply(t);
+        if (r != null) {
+          sink.next(r);
+        } else {
+          //t.getContext().success();
+          sink.next(t);
+        }
+      }
+    };
+  }
+
 }
 
 

@@ -8,16 +8,20 @@ package org.mule.runtime.core.processor.strategy;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.internal.matchers.ThrowableMessageMatcher.hasMessage;
 import static org.mule.runtime.core.processor.strategy.AbstractSchedulingProcessingStrategy.TRANSACTIONAL_ERROR_MESSAGE;
 
 import org.mule.runtime.core.api.DefaultMuleException;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
+import org.mule.runtime.core.exception.MessagingException;
 import org.mule.runtime.core.processor.strategy.ReactorProcessingStrategyFactory.ReactorProcessingStrategy;
 import org.mule.runtime.core.transaction.TransactionCoordination;
 import org.mule.tck.testmodels.mule.TestTransaction;
 
+import org.junit.Ignore;
 import ru.yandex.qatools.allure.annotations.Description;
 import ru.yandex.qatools.allure.annotations.Features;
 import ru.yandex.qatools.allure.annotations.Stories;
@@ -44,6 +48,7 @@ public class MultiReactorProcessingStrategyTestCase extends AbstractProcessingSt
     assertEverythingOnEventLoop();
   }
 
+  @Ignore("MULE-11352")
   @Override
   @Description("When MultiReactorProcessingStrategy is configured, two concurrent requests may be processed by two different "
       + " cpu light threads.  This is why this strategy is called 'MultiReactor' and not 'Reactor`.  MULE-11132 is needed for "
@@ -128,8 +133,9 @@ public class MultiReactorProcessingStrategyTestCase extends AbstractProcessingSt
 
     TransactionCoordination.getInstance().bindTransaction(new TestTransaction(muleContext));
 
-    expectedException.expect(DefaultMuleException.class);
-    expectedException.expectMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE));
+    expectedException.expect(MessagingException.class);
+    expectedException.expectCause(instanceOf(DefaultMuleException.class));
+    expectedException.expectCause(hasMessage(equalTo(TRANSACTIONAL_ERROR_MESSAGE)));
     process(flow, testEvent());
   }
 
