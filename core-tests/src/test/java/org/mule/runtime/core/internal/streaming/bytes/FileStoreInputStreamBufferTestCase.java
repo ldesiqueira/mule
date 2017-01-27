@@ -4,14 +4,14 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
 import static java.nio.ByteBuffer.allocate;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mule.runtime.core.internal.stream.bytes.OffHeapMode.FILE_STORE;
-import static org.mule.runtime.core.internal.stream.bytes.OffHeapMode.NO_OFF_HEAP;
+import static org.mule.runtime.core.internal.streaming.bytes.OffHeapMode.FILE_STORE;
+import static org.mule.runtime.core.internal.streaming.bytes.OffHeapMode.NO_OFF_HEAP;
 import org.mule.tck.size.SmallTest;
 
 import java.io.ByteArrayInputStream;
@@ -25,7 +25,7 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 @SmallTest
-public class StreamBufferTestCase extends AbstractByteStreamingTestCase {
+public class FileStoreInputStreamBufferTestCase extends AbstractByteStreamingTestCase {
 
   @Parameterized.Parameters(name = "{0}")
   public static Collection<Object[]> data() {
@@ -37,11 +37,11 @@ public class StreamBufferTestCase extends AbstractByteStreamingTestCase {
 
   private final int bufferSize = KB_256;
 
-  private StreamBuffer buffer;
+  private FileStoreInputStreamBuffer buffer;
 
-  public StreamBufferTestCase(String name, OffHeapMode offHeapMode) {
+  public FileStoreInputStreamBufferTestCase(String name, OffHeapMode offHeapMode) {
     super(MB_2);
-    buffer = new StreamBuffer(new ByteArrayInputStream(data.getBytes()), bufferSize, offHeapMode);
+    buffer = new FileStoreInputStreamBuffer(new ByteArrayInputStream(data.getBytes()), bufferSize, offHeapMode);
   }
 
   @Test

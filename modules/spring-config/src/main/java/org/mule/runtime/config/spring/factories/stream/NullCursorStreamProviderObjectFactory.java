@@ -7,7 +7,7 @@
 package org.mule.runtime.config.spring.factories.stream;
 
 import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
-import org.mule.runtime.core.internal.stream.bytes.factory.NullCursorStreamProviderFactory;
+import org.mule.runtime.core.internal.streaming.bytes.factory.NullCursorStreamProviderFactory;
 import org.mule.runtime.dsl.api.component.ObjectFactory;
 
 public class NullCursorStreamProviderObjectFactory implements ObjectFactory<CursorStreamProviderFactory> {

@@ -6,10 +6,10 @@
  */
 package org.mule.runtime.core.api.stream.bytes;
 
-import static org.mule.runtime.core.internal.stream.bytes.OffHeapMode.FILE_STORE;
+import static org.mule.runtime.core.internal.streaming.bytes.OffHeapMode.FILE_STORE;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.functional.Either;
-import org.mule.runtime.core.internal.stream.bytes.factory.DefaultCursorStreamProviderFactory;
+import org.mule.runtime.core.internal.streaming.bytes.factory.DefaultCursorStreamProviderFactory;
 import org.mule.runtime.extension.api.ExtensionConstants;
 
 import java.io.InputStream;

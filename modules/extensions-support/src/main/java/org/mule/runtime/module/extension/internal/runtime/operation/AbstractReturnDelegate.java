@@ -21,7 +21,7 @@ import org.mule.runtime.api.metadata.MediaType;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
-import org.mule.runtime.core.internal.stream.bytes.factory.DefaultCursorStreamProviderFactory;
+import org.mule.runtime.core.internal.streaming.bytes.factory.DefaultCursorStreamProviderFactory;
 import org.mule.runtime.extension.api.runtime.operation.Result;
 import org.mule.runtime.module.extension.internal.runtime.ExecutionContextAdapter;
 import org.mule.runtime.module.extension.internal.util.MuleExtensionUtils;

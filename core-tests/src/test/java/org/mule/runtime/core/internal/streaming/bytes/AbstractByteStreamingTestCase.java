@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 

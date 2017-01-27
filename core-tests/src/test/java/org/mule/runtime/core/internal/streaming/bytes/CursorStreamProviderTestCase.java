@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
 import static java.lang.Math.toIntExact;
 import static java.util.concurrent.Executors.newFixedThreadPool;
@@ -13,8 +13,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.mule.runtime.core.internal.stream.bytes.OffHeapMode.FILE_STORE;
-import static org.mule.runtime.core.internal.stream.bytes.OffHeapMode.NO_OFF_HEAP;
+import static org.mule.runtime.core.internal.streaming.bytes.OffHeapMode.FILE_STORE;
+import static org.mule.runtime.core.internal.streaming.bytes.OffHeapMode.NO_OFF_HEAP;
 import org.mule.runtime.api.streaming.CursorStream;
 import org.mule.runtime.api.streaming.CursorStreamProvider;
 import org.mule.runtime.core.util.func.CheckedConsumer;

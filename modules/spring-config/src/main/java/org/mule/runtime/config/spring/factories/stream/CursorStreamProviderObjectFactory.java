@@ -6,9 +6,9 @@
  */
 package org.mule.runtime.config.spring.factories.stream;
 
-import org.mule.runtime.core.internal.stream.bytes.OffHeapMode;
+import org.mule.runtime.core.internal.streaming.bytes.OffHeapMode;
 import org.mule.runtime.core.api.stream.bytes.CursorStreamProviderFactory;
-import org.mule.runtime.core.internal.stream.bytes.factory.DefaultCursorStreamProviderFactory;
+import org.mule.runtime.core.internal.streaming.bytes.factory.DefaultCursorStreamProviderFactory;
 import org.mule.runtime.api.util.ByteUnit;
 import org.mule.runtime.dsl.api.component.ObjectFactory;
 

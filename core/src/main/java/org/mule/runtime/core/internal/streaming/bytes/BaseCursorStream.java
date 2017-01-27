@@ -4,17 +4,32 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
-import org.mule.runtime.api.streaming.CursorStream;
+import static org.mule.runtime.api.util.Preconditions.checkArgument;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 
 import java.io.IOException;
 
-abstract class AbstractCursorStream extends CursorStream {
+abstract class BaseCursorStream extends CursorStreamAdapter {
 
+  private final CursorStreamProvider provider;
   private boolean closed = false;
   protected long position = 0;
   private long mark = 0;
+
+  public BaseCursorStream(CursorStreamProvider provider) {
+    checkArgument(provider != null, "provider cannot be null");
+    this.provider = provider;
+  }
+
+  /**
+   * {@inheritDoc}
+   */
+  @Override
+  public CursorStreamProvider getProvider() {
+    return provider;
+  }
 
   /**
    * {@inheritDoc}

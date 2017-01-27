@@ -8,7 +8,7 @@ package org.mule.runtime.core.component;
 
 import static java.util.Collections.singletonList;
 import static org.mule.runtime.core.api.Event.setCurrentEvent;
-import static org.mule.runtime.core.internal.stream.bytes.CursorStreamUtils.withCursoredEvent;
+import static org.mule.runtime.core.internal.streaming.bytes.CursorStreamUtils.withCursoredEvent;
 import static org.mule.runtime.core.util.SystemUtils.getDefaultEncoding;
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.i18n.I18nMessageFactory;

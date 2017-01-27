@@ -4,27 +4,28 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
 import static java.nio.ByteBuffer.allocateDirect;
 
 import org.mule.runtime.api.streaming.CursorStream;
+import org.mule.runtime.api.streaming.CursorStreamProvider;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A {@link CursorStream} which pulls its data from a {@link StreamBuffer}.
+ * A {@link CursorStream} which pulls its data from a {@link FileStoreInputStreamBuffer}.
  * <p>
- * To reduce contention on the {@link StreamBuffer}, this class also uses a local intermediate
+ * To reduce contention on the {@link FileStoreInputStreamBuffer}, this class also uses a local intermediate
  * memory buffer which size must be configured
  *
- * @see StreamBuffer
+ * @see FileStoreInputStreamBuffer
  * @since 1.0
  */
-public final class BufferedCursorStream extends AbstractCursorStream {
+public final class BufferedCursorStream extends BaseCursorStream {
 
-  private final StreamBuffer streamBuffer;
+  private final FileStoreInputStreamBuffer streamBuffer;
   private final int localBufferSize;
 
   /**
@@ -39,7 +40,8 @@ public final class BufferedCursorStream extends AbstractCursorStream {
    * @param streamBuffer the buffer which provides data
    * @param localBufferSize   The size of the intermediate buffer
    */
-  public BufferedCursorStream(StreamBuffer streamBuffer, int localBufferSize) {
+  public BufferedCursorStream(FileStoreInputStreamBuffer streamBuffer, int localBufferSize, CursorStreamProvider provider) {
+    super(provider);
     this.streamBuffer = streamBuffer;
     this.localBufferSize = localBufferSize;
     memoryBuffer = allocateDirect(localBufferSize);

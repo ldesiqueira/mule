@@ -4,7 +4,7 @@
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
  */
-package org.mule.runtime.core.internal.stream.bytes;
+package org.mule.runtime.core.internal.streaming.bytes;
 
 import org.mule.runtime.api.streaming.CursorStream;
 
@@ -12,11 +12,11 @@ import java.io.InputStream;
 
 public class BufferedCursorStreamProvider extends AbstractCursorStreamProvider {
 
-  private final StreamBuffer buffer;
+  private final FileStoreInputStreamBuffer buffer;
 
   public BufferedCursorStreamProvider(InputStream wrappedStream, int bufferSize, OffHeapMode offHeapMode) {
     super(wrappedStream, bufferSize);
-    buffer = new StreamBuffer(wrappedStream, bufferSize, offHeapMode);
+    buffer = new FileStoreInputStreamBuffer(wrappedStream, bufferSize, offHeapMode);
   }
 
   @Override
