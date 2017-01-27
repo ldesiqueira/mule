@@ -75,7 +75,10 @@ public class ReactiveInterceptorAdapter implements BiFunction<Processor, Reactiv
 
     if (interceptionHandler.intercept(componentIdentifier, componentLocation)) {
       try {
-        if (interceptionHandler.getClass().getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class, InterceptionAction.class).isDefault()) {
+        //if (interceptionHandler.getClass().getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class, InterceptionAction.class).isDefault()) {
+        if (!interceptionHandler.getClass()
+            .getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class, InterceptionAction.class).getDeclaringClass()
+            .equals(interceptionHandler.getClass())) {
           return publisher -> from(publisher)
               .map(doBefore(component, dslParameters))
               .transform(next)
@@ -95,10 +98,17 @@ public class ReactiveInterceptorAdapter implements BiFunction<Processor, Reactiv
     return next;
   }
 
-  private CompletableFuture<Event> doAround(Event event, Processor component, Map<String, String> dslParameters, ReactiveProcessor next) {
+  private CompletableFuture<Event> doAround(Event event, Processor component, Map<String, String> dslParameters,
+                                            ReactiveProcessor next) {
     DefaultInterceptionEvent interceptionEvent = new DefaultInterceptionEvent(event);
+    final ReactiveInterceptionAction reactiveInterceptionAction = new ReactiveInterceptionAction(event, next);
     interceptionHandler.around(resolveParameters(event, component, dslParameters), interceptionEvent,
-                               new ReactiveInterceptionAction(event, next));
+                               reactiveInterceptionAction);
+    //TODO Optional
+    final CompletableFuture<Event> future = reactiveInterceptionAction.getFuture();
+    if (future != null) {
+      return future;
+    }
     return completedFuture(interceptionEvent.resolve());
   }
 

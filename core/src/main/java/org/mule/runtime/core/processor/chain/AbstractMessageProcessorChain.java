@@ -119,10 +119,19 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
 
   @Override
   public Publisher<Event> apply(Publisher<Event> publisher) {
+    List<BiFunction<Processor, ReactiveProcessor, ReactiveProcessor>> interceptorsToBeExecuted = new ArrayList<>(interceptors);
+    //TODO Review how interceptors are registered!
+    muleContext.getMessageProcessorInterceptorManager().retrieveInterceptionHandlerChain().stream()
+        .forEach(interceptionHandler -> {
+          ReactiveInterceptorAdapter reactiveInterceptorAdapter = new ReactiveInterceptorAdapter(interceptionHandler);
+          reactiveInterceptorAdapter.setFlowConstruct(flowConstruct);
+          interceptorsToBeExecuted.add(reactiveInterceptorAdapter);
+        });
+
     Flux<Event> stream = from(publisher);
     for (Processor processor : getProcessorsToExecute()) {
       ReactiveProcessor processorFunction = processor;
-      for (BiFunction<Processor, ReactiveProcessor, ReactiveProcessor> interceptor : interceptors) {
+      for (BiFunction<Processor, ReactiveProcessor, ReactiveProcessor> interceptor : interceptorsToBeExecuted) {
         processorFunction = interceptor.apply(processor, processorFunction);
       }
       stream.transform(processorFunction);
@@ -269,14 +278,6 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
     this.muleContext = muleContext;
     this.messageProcessorExecutionTemplate.setMuleContext(muleContext);
     setMuleContextIfNeeded(getMessageProcessorsForLifecycle(), muleContext);
-
-    //TODO Review how interceptors are registered!
-    muleContext.getMessageProcessorInterceptorManager().retrieveInterceptionHandlerChain().stream()
-        .forEach(interceptionHandler -> {
-          ReactiveInterceptorAdapter reactiveInterceptorAdapter = new ReactiveInterceptorAdapter(interceptionHandler);
-          reactiveInterceptorAdapter.setFlowConstruct(flowConstruct);
-          interceptors.add(reactiveInterceptorAdapter);
-        });
   }
 
   @Override

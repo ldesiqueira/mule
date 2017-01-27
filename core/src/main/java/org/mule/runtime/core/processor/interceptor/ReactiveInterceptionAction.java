@@ -7,13 +7,12 @@
 
 package org.mule.runtime.core.processor.interceptor;
 
+import static reactor.core.publisher.Mono.just;
 import org.mule.runtime.api.interception.InterceptionAction;
 import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.processor.ReactiveProcessor;
 
 import java.util.concurrent.CompletableFuture;
-
-import reactor.core.publisher.Mono;
 
 /**
  * TODO
@@ -31,6 +30,10 @@ public class ReactiveInterceptionAction implements InterceptionAction {
 
   @Override
   public void proceed() {
-    this.future = Mono.just(event).transform(next).toFuture();
+    this.future = just(event).transform(next).toFuture();
+  }
+
+  public CompletableFuture<Event> getFuture() {
+    return future;
   }
 }

@@ -116,12 +116,21 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
         event.message(getInterceptedMessage(TEST_MESSAGE));
       }
 
+      @Override
+      public String toString() {
+        return "interceptSkipOnFirstInterceptor-1";
+      }
     });
     secondInterceptionHandlerHolder.setHandler(new InterceptionHandler() {
 
       @Override
       public void before(Map<String, Object> parameters, InterceptionEvent event) {
         fail("Should not be executed");
+      }
+
+      @Override
+      public String toString() {
+        return "interceptSkipOnFirstInterceptor-2";
       }
     });
 
@@ -503,13 +512,27 @@ public class MessageProcessorInterceptionFlowTestCase extends AbstractIntegratio
     }
 
     @Override
+    public void around(Map<String, Object> parameters, InterceptionEvent event, InterceptionAction action) {
+      handler.around(parameters, event, action);
+    }
+
+    @Override
     public void after(InterceptionEvent event) {
       handler.after(event);
     }
 
+    @Override
+    public String toString() {
+      return handler.toString();
+    }
   }
 
   private class NoOpInterceptionHandler implements InterceptionHandler {
+
+    @Override
+    public String toString() {
+      return this.getClass().getName();
+    }
 
   }
 
