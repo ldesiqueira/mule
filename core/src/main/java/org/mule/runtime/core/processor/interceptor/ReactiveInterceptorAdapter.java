@@ -12,6 +12,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.mule.runtime.dsl.api.component.config.ComponentIdentifier.ANNOTATION_PARAMETERS;
 import static reactor.core.publisher.Mono.from;
 import static reactor.core.publisher.Mono.fromFuture;
+
 import org.mule.runtime.api.component.ComponentIdentifier;
 import org.mule.runtime.api.component.ComponentLocation;
 import org.mule.runtime.api.exception.MuleException;
@@ -75,7 +76,8 @@ public class ReactiveInterceptorAdapter implements BiFunction<Processor, Reactiv
 
     if (interceptionHandler.intercept(componentIdentifier, componentLocation)) {
       try {
-        //if (interceptionHandler.getClass().getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class, InterceptionAction.class).isDefault()) {
+        // if (interceptionHandler.getClass().getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class,
+        // InterceptionAction.class).isDefault()) {
         if (!interceptionHandler.getClass()
             .getMethod(AROUND_METHOD_NAME, Map.class, InterceptionEvent.class, InterceptionAction.class).getDeclaringClass()
             .equals(interceptionHandler.getClass())) {

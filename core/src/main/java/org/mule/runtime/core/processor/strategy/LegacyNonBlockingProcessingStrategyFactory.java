@@ -19,6 +19,7 @@ import org.mule.runtime.core.api.Event;
 import org.mule.runtime.core.api.MuleContext;
 import org.mule.runtime.core.api.processor.NonBlockingMessageProcessor;
 import org.mule.runtime.core.api.processor.Processor;
+import org.mule.runtime.core.api.processor.ReactiveProcessor;
 import org.mule.runtime.core.api.processor.strategy.ProcessingStrategy;
 
 import java.util.function.Consumer;
@@ -56,6 +57,7 @@ public class LegacyNonBlockingProcessingStrategyFactory extends LegacyAsynchrono
     }
 
     //@Override
+    @Override
     public Function<Publisher<Event>, Publisher<Event>> onProcessor(Processor processor,
                                                                     Function<Publisher<Event>, Publisher<Event>> processorFunction) {
       if (processor instanceof NonBlockingMessageProcessor) {
@@ -63,6 +65,17 @@ public class LegacyNonBlockingProcessingStrategyFactory extends LegacyAsynchrono
       } else {
         return publisher -> from(publisher).transform(processorFunction);
       }
+    }
+
+    @Override
+    public Function<ReactiveProcessor, ReactiveProcessor> onProcessor() {
+      return processor -> {
+        if (processor instanceof NonBlockingMessageProcessor) {
+          return publisher -> from(publisher).transform(processor).publishOn(fromExecutorService(scheduler));
+        } else {
+          return publisher -> from(publisher).transform(processor);
+        }
+      };
     }
 
     @Override

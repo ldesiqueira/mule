@@ -19,6 +19,7 @@ import static org.mule.runtime.core.util.ExceptionUtils.createErrorEvent;
 import static org.mule.runtime.core.util.ExceptionUtils.putContext;
 import static org.slf4j.LoggerFactory.getLogger;
 import static reactor.core.publisher.Flux.from;
+
 import org.mule.runtime.api.exception.MuleException;
 import org.mule.runtime.api.lifecycle.InitialisationException;
 import org.mule.runtime.api.lifecycle.Startable;
@@ -51,6 +52,7 @@ import java.util.function.Function;
 
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
+
 import reactor.core.publisher.Flux;
 
 /**
@@ -134,7 +136,7 @@ public abstract class AbstractMessageProcessorChain extends AbstractAnnotatedObj
       for (BiFunction<Processor, ReactiveProcessor, ReactiveProcessor> interceptor : interceptorsToBeExecuted) {
         processorFunction = interceptor.apply(processor, processorFunction);
       }
-      stream.transform(processorFunction);
+      stream = stream.transform(processorFunction);
     }
     return stream;
   }
